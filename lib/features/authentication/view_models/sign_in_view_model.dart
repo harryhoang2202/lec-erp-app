@@ -37,28 +37,6 @@ class SignInViewModel extends ChangeNotifier {
     }
   }
 
-  /// Attempts to auto-login if remember me is enabled and credentials exist
-  Future<bool> attemptAutoLogin() async {
-    try {
-      final UserModel? savedUser = await StorageService.getUserCredentials();
-      if (savedUser != null && savedUser.rememberMe && savedUser.isValid) {
-        // Auto-fill the form
-        erpUrlController.text = savedUser.erpUrl;
-        usernameController.text = savedUser.username;
-        passwordController.text = savedUser.password;
-        _rememberMe = savedUser.rememberMe;
-        _currentUser = savedUser;
-        notifyListeners();
-
-        // Attempt to sign in automatically
-        return await signIn();
-      }
-      return false;
-    } catch (e) {
-      return false;
-    }
-  }
-
   /// Loads saved credentials from local storage
   Future<void> _loadSavedCredentials() async {
     try {

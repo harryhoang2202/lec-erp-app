@@ -134,11 +134,9 @@ class _SignInPageState extends State<SignInPage> {
 
     final bool success = await _viewModel.signIn();
     if (success && mounted) {
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute(
-          builder: (context) => MainScreen(user: _viewModel.currentUser!),
-        ),
-      );
+      Navigator.of(
+        context,
+      ).pushReplacement(MaterialPageRoute(builder: (context) => MainScreen()));
     }
   }
 }

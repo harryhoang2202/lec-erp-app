@@ -10,56 +10,63 @@ class MainViewModel with ChangeNotifier {
   String? _fcmToken;
   bool _isLoading = false;
   String? _currentUrl;
-
+  String? _erpUrl;
   String? get fcmToken => _fcmToken;
   bool get isLoading => _isLoading;
   String? get currentUrl => _currentUrl;
-
+  String? get erpUrl => _erpUrl;
   set currentUrl(String? url) {
     _currentUrl = url;
     notifyListeners();
   }
 
-  Future<void> initialize(UserModel user) async {
+  Future<void> initialize() async {
     _isLoading = true;
     notifyListeners();
-
-    try {
-      final token = await NotificationHelper.getToken();
-      _fcmToken = token;
-    } catch (e) {
-      debugPrint('Error getting FCM token: $e');
-    } finally {
-      _isLoading = false;
-      notifyListeners();
-    }
-    final UserModel? savedUser = await StorageService.getUserCredentials();
-    String loginPath = savedUser != null
-        ? '/Account/LogInMobile'
-        : '/Account/RegisterMobileLogIn';
-
-    // Parse the ERP URL safely using UrlHelper
-    final Uri? erpUri = UrlHelper.parseUrl(user.erpUrl);
-    if (erpUri == null) {
-      debugPrint('Invalid ERP URL: ${user.erpUrl}');
+    UserModel? user = await StorageService.getUserCredentials();
+    if (user == null) {
       _isLoading = false;
       notifyListeners();
       return;
-    }
+    } else {
+      try {
+        _erpUrl = user.erpUrl;
+        final token = await NotificationHelper.getToken();
+        _fcmToken = token;
+      } catch (e) {
+        debugPrint('Error getting FCM token: $e');
+      } finally {
+        _isLoading = false;
+        notifyListeners();
+      }
+      final UserModel? savedUser = await StorageService.getUserCredentials();
+      String loginPath = savedUser != null
+          ? '/Account/LogInMobile'
+          : '/Account/RegisterMobileLogIn';
 
-    Uri uri = Uri(
-      scheme: erpUri.scheme,
-      host: erpUri.host,
-      path: loginPath,
-      queryParameters: {
-        'username': user.username,
-        'password': user.password,
-        'tokenID': await StorageService.getDeviceId() ?? '<tokenmachine>',
-        'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
-      },
-    );
-    _currentUrl = uri.toString();
-    notifyListeners();
+      // Parse the ERP URL safely using UrlHelper
+      final Uri? erpUri = UrlHelper.parseUrl(user.erpUrl);
+      if (erpUri == null) {
+        debugPrint('Invalid ERP URL: ${user.erpUrl}');
+        _isLoading = false;
+        notifyListeners();
+        return;
+      }
+
+      Uri uri = Uri(
+        scheme: erpUri.scheme,
+        host: erpUri.host,
+        path: loginPath,
+        queryParameters: {
+          'username': user.username,
+          'password': user.password,
+          'tokenID': await StorageService.getDeviceId() ?? '<tokenmachine>',
+          'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
+        },
+      );
+      _currentUrl = uri.toString();
+      notifyListeners();
+    }
   }
 
   Future<void> signOut() async {

@@ -1,16 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/data/models/user_model.dart';
+
 import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
+import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.dart';
 import 'package:hybrid_erp_app/features/dashboard/view_models/main_view_model.dart';
 import 'package:hybrid_erp_app/features/notifications/notification_list_screen.dart';
+import 'package:hybrid_erp_app/shared/dimens/app_dimen.dart';
 
 import 'package:webview_flutter/webview_flutter.dart';
 
 class MainScreen extends StatefulWidget {
-  final UserModel user;
-  const MainScreen({super.key, required this.user});
+  final String? initialUrl;
+  const MainScreen({super.key, this.initialUrl});
 
   @override
   State<MainScreen> createState() => _MainScreenState();
@@ -21,6 +23,8 @@ class _MainScreenState extends State<MainScreen> {
   late final WebViewController _controller;
   bool _isLoading = true;
   String homeUrl = '';
+  int _retryCount = 0;
+  static const int _maxRetries = 3;
   @override
   void initState() {
     super.initState();
@@ -29,19 +33,68 @@ class _MainScreenState extends State<MainScreen> {
       _isLoading = true;
     });
     _viewModel = MainViewModel();
-    Future.wait([_viewModel.initialize(widget.user)]).then((value) {
-      homeUrl = 'https://${widget.user.erpUrl}/Home';
+    Future.wait([_viewModel.initialize()]).then((value) {
+      _retryCount = 0; // Reset retry counter on successful initialization
+      homeUrl = 'https://${_viewModel.erpUrl}/Home';
       _controller
           .loadRequest(Uri.parse(_viewModel.currentUrl ?? homeUrl))
           .catchError((error) {
             _isLoading = false;
             setState(() {});
           });
+      if (widget.initialUrl != null) {
+        _controller.loadRequest(Uri.parse(widget.initialUrl!));
+      }
     });
 
     setState(() {
       _isLoading = false;
     });
+  }
+
+  bool checkIsDocument(String url) {
+    return [
+      '.doc',
+      '.docx',
+      '.pdf',
+      '.xls',
+      '.xlsx',
+      '.ppt',
+      '.pptx',
+    ].any((e) => url.endsWith(e));
+  }
+
+  Future<void> _handleAuthRedirect(String url) async {
+    if (_retryCount < _maxRetries) {
+      _retryCount++;
+      debugPrint(
+        'Auth redirect detected, retrying initialization (attempt $_retryCount/$_maxRetries)',
+      );
+
+      try {
+        await _viewModel.initialize();
+        _retryCount = 0; // Reset retry counter on successful retry
+        homeUrl = 'https://${_viewModel.erpUrl}/Home';
+        await _controller.loadRequest(
+          Uri.parse(_viewModel.currentUrl ?? homeUrl),
+        );
+      } catch (e) {
+        debugPrint('Retry failed: $e');
+        if (_retryCount >= _maxRetries) {
+          _redirectToSignIn();
+        }
+      }
+    } else {
+      debugPrint('Max retries reached, redirecting to SignInPage');
+      _redirectToSignIn();
+    }
+  }
+
+  void _redirectToSignIn() {
+    _viewModel.signOut();
+    Navigator.of(
+      context,
+    ).pushReplacement(MaterialPageRoute(builder: (context) => SignInPage()));
   }
 
   Future<void> _initializeWebView() async {
@@ -52,31 +105,38 @@ class _MainScreenState extends State<MainScreen> {
           onProgress: (int progress) {
             // Update loading progress
           },
+
           onNavigationRequest: (request) {
-            if (![
-              '.doc',
-              '.docx',
-              '.pdf',
-              '.xls',
-              '.xlsx',
-              '.ppt',
-              '.pptx',
-            ].contains(request.url)) {
+            debugPrint('navigation request to ${request.url}');
+            if (!checkIsDocument(request.url)) {
               return NavigationDecision.navigate;
             }
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (context) => DocumentPreviewScreen(url: request.url),
+              ),
+            );
             return NavigationDecision.prevent;
           },
           onPageStarted: (String url) {
-            if (url.contains('Account/LogOff')) {
-              _viewModel.signOut();
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute(builder: (context) => SignInPage()),
+            debugPrint('page started to $url');
+            if (!checkIsDocument(url)) {
+              if ([
+                'Account/LogOff',
+                'Account/LogOn',
+              ].any((e) => url.contains(e))) {
+                _viewModel.signOut();
+                Navigator.of(context).pushReplacement(
+                  MaterialPageRoute(builder: (context) => SignInPage()),
+                );
+              }
+            } else {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => DocumentPreviewScreen(url: url),
+                ),
               );
             }
-
-            setState(() {
-              _viewModel.currentUrl = url;
-            });
           },
           onPageFinished: (String url) {
             setState(() {
@@ -86,14 +146,18 @@ class _MainScreenState extends State<MainScreen> {
           },
           onUrlChange: (UrlChange change) {
             debugPrint('url change to ${change.url}');
+            if (checkIsDocument(change.url ?? '')) {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) =>
+                      DocumentPreviewScreen(url: change.url ?? ''),
+                ),
+              );
+            }
           },
-          onWebResourceError: (WebResourceError error) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Có lỗi xảy ra: ${error.description}'),
-                backgroundColor: Colors.red,
-              ),
-            );
+          onWebResourceError: (WebResourceError error) async {
+            debugPrint('web resource error: ${error.description}');
+            _handleAuthRedirect(error.url ?? '');
           },
         ),
       );
@@ -101,52 +165,50 @@ class _MainScreenState extends State<MainScreen> {
 
   void _onBackPressed() async {
     if (await _controller.canGoBack()) {
-      await _controller.goBack();
+      if ((await _controller.currentUrl()) == homeUrl) {
+        _showBackDialog();
+      } else {
+        await _controller.goBack();
+      }
     } else {
       // If can't go back, show confirmation dialog
       if (mounted) {
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              backgroundColor: Colors.white,
-              title: const Text(
-                'Thoát ứng dụng',
-                style: TextStyle(color: Colors.black),
-                textAlign: TextAlign.center,
-              ),
-              content: const Text(
-                'Bạn có chắc chắn muốn thoát khỏi ứng dụng?',
-                style: TextStyle(color: Colors.black),
-                textAlign: TextAlign.center,
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  child: const Text(
-                    'Hủy',
-                    style: TextStyle(color: Colors.black),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    exit(0);
-                    // _viewModel.signOut();
-                    // Navigator.of(context).pushReplacement(
-                    //   MaterialPageRoute(builder: (context) => SignInPage()),
-                    // );
-                  },
-                  child: const Text(
-                    'Thoát',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
+        _showBackDialog();
       }
     }
+  }
+
+  _showBackDialog() {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          backgroundColor: Colors.white,
+          title: const Text(
+            'Thoát ứng dụng',
+            style: TextStyle(color: Colors.black),
+            textAlign: TextAlign.center,
+          ),
+          content: const Text(
+            'Bạn có chắc chắn muốn thoát khỏi ứng dụng?',
+            style: TextStyle(color: Colors.black),
+            textAlign: TextAlign.center,
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Hủy', style: TextStyle(color: Colors.black)),
+            ),
+            TextButton(
+              onPressed: () {
+                exit(0);
+              },
+              child: const Text('Thoát', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   void _onHomePressed() async {
@@ -184,17 +246,17 @@ class _MainScreenState extends State<MainScreen> {
         },
         selectedItemColor: Colors.blue,
         unselectedItemColor: Colors.grey,
+        showSelectedLabels: false,
+        showUnselectedLabels: false,
+        iconSize: 32.0.resp(small: 28),
         items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.notifications),
-            label: 'Thông báo',
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Trang chủ'),
-
-          BottomNavigationBarItem(
-            icon: Icon(Icons.arrow_back_ios),
-            label: 'Quay lại',
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.notifications), label: ''),
+          BottomNavigationBarItem(icon: Icon(Icons.home), label: ''),
+          if (!Platform.isAndroid)
+            BottomNavigationBarItem(
+              icon: Icon(Icons.arrow_back_ios),
+              label: '',
+            ),
         ],
       ),
     );

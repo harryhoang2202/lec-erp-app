@@ -44,3 +44,12 @@
 
 # Keep custom application class
 -keep class com.erplec.app.** { *; }
+
+# Keep Google Play Core classes (for deferred components)
+-keep class com.google.android.play.core.** { *; }
+-dontwarn com.google.android.play.core.**
+
+# Keep native methods
+-keepclasseswithmembernames class * {
+    native <methods>;
+}

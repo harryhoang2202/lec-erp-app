@@ -81,7 +81,7 @@ class _SplashScreenState extends State<SplashScreen>
           Navigator.of(context).pushReplacement(
             PageRouteBuilder(
               pageBuilder: (context, animation, secondaryAnimation) =>
-                  MainScreen(user: savedUser),
+                  MainScreen(),
               transitionsBuilder:
                   (context, animation, secondaryAnimation, child) {
                     return FadeTransition(opacity: animation, child: child);
