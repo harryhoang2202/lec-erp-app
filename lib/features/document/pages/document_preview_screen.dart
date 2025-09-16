@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:webview_flutter/webview_flutter.dart';
-import 'package:dio/dio.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
-import 'package:open_file/open_file.dart';
-import 'dart:io';
+import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
+import 'package:hybrid_erp_app/data/services/file_download_service.dart';
+import 'package:hybrid_erp_app/features/document/widgets/image_viewer.dart';
+import 'package:hybrid_erp_app/features/document/widgets/pdf_viewer.dart';
 
 class DocumentPreviewScreen extends StatefulWidget {
   final String url;
@@ -15,169 +13,92 @@ class DocumentPreviewScreen extends StatefulWidget {
 }
 
 class _DocumentPreviewScreenState extends State<DocumentPreviewScreen> {
-  late WebViewController controller;
-  bool isLoading = true;
-  bool isDownloading = false;
-  String? downloadedFilePath;
-  @override
-  void initState() {
-    super.initState();
-    final previewUrl = widget.url;
-    controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..loadRequest(Uri.parse(previewUrl))
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (url) {
-            setState(() {
-              isLoading = true;
-            });
-          },
-          onPageFinished: (url) {
-            setState(() {
-              isLoading = false;
-            });
-          },
-          onNavigationRequest: (request) {
-            final uri = Uri.parse(request.url);
-            if (uri.host.contains('docs.google.com') ||
-                uri.host.contains('drive.google.com') ||
-                request.url == widget.url) {
-              return NavigationDecision.navigate;
-            }
-
-            return NavigationDecision.prevent;
-          },
-        ),
-      );
-  }
-
-  Future<bool> _requestStoragePermission() async {
-    if (Platform.isAndroid) {
-      final status = await Permission.storage.request();
-      if (status != PermissionStatus.granted) {
-        final manageStatus = await Permission.manageExternalStorage.request();
-        return manageStatus == PermissionStatus.granted;
-      }
-      return status == PermissionStatus.granted;
-    }
-    return true; // iOS doesn't need explicit storage permission for app documents
-  }
-
-  Future<void> _downloadFile() async {
-    if (isDownloading) return;
-
-    setState(() {
-      isDownloading = true;
-    });
-
-    try {
-      // Request storage permission
-      final hasPermission = await _requestStoragePermission();
-      if (!hasPermission) {
-        _showSnackBar('Storage permission denied');
-        return;
-      }
-
-      // Get the downloads directory
-      Directory? directory;
-      if (Platform.isAndroid) {
-        directory = await getExternalStorageDirectory();
-        // For Android, use the Downloads folder
-        String downloadsPath = '/storage/emulated/0/Download';
-        directory = Directory(downloadsPath);
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (!directory.existsSync()) {
-        _showSnackBar('Could not access storage directory');
-        return;
-      }
-
-      // Extract filename from URL
-      final uri = Uri.parse(widget.url);
-      String fileName = uri.pathSegments.last;
-      if (fileName.isEmpty || !fileName.contains('.')) {
-        fileName = 'document_${DateTime.now().millisecondsSinceEpoch}.pdf';
-      }
-
-      final filePath = '${directory.path}/$fileName';
-
-      // Download the file
-      final dio = Dio();
-      await dio.download(widget.url, filePath);
-
-      // Store the downloaded file path
-      downloadedFilePath = filePath;
-      _showSnackBar('Đã tải về file $fileName', filePath: filePath);
-    } catch (e) {
-      _showSnackBar('Lỗi tải về file: ${e.toString()}');
-    } finally {
-      setState(() {
-        isDownloading = false;
-      });
-    }
-  }
-
-  Future<void> _openFile(String filePath) async {
-    try {
-      final result = await OpenFile.open(filePath);
-      if (result.type != ResultType.done) {
-        _showSnackBar('Không thể mở file: ${result.message}');
-      }
-    } catch (e) {
-      _showSnackBar('Lỗi mở file: ${e.toString()}');
-    }
-  }
-
-  void _showSnackBar(String message, {String? filePath}) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(message),
-          duration: const Duration(seconds: 5),
-          action: filePath != null
-              ? SnackBarAction(
-                  label: 'Mở file',
-                  textColor: Colors.white,
-                  onPressed: () => _openFile(filePath),
-                )
-              : null,
-        ),
-      );
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
-        title: Text('Document Preview'),
+        title: Text(_extractFileName(widget.url)),
         backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
         actions: [
           IconButton(
-            onPressed: isDownloading ? null : _downloadFile,
-            icon: isDownloading
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.download),
+            onPressed: () {
+              _downloadFile();
+            },
+            icon: Icon(Icons.download),
           ),
         ],
       ),
-      body: Stack(
+      body: _buildPreviewContent(),
+    );
+  }
+
+  /// Build the appropriate preview content based on file type
+  Widget _buildPreviewContent() {
+    if (_isImageFile(widget.url)) {
+      return ImageViewer(imageUrl: widget.url);
+    } else if (_isPdfFile(widget.url)) {
+      return PdfViewer(pdfUrl: widget.url);
+    } else {
+      // Fallback for unsupported file types
+      return _buildUnsupportedFileView();
+    }
+  }
+
+  /// Check if the URL points to an image file
+  bool _isImageFile(String url) {
+    return MainScreenConstants.imageFileExtensions.any(
+      (extension) => url.toLowerCase().endsWith(extension),
+    );
+  }
+
+  /// Check if the URL points to a PDF file
+  bool _isPdfFile(String url) {
+    return MainScreenConstants.pdfFileExtensions.any(
+      (extension) => url.toLowerCase().endsWith(extension),
+    );
+  }
+
+  /// Extract filename from URL
+  String _extractFileName(String url) {
+    final uri = Uri.parse(url);
+    final pathSegments = uri.pathSegments;
+    if (pathSegments.isNotEmpty) {
+      return pathSegments.last;
+    }
+    return 'Document';
+  }
+
+  /// Build view for unsupported file types
+  Widget _buildUnsupportedFileView() {
+    return const Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          WebViewWidget(controller: controller),
-          if (isLoading)
-            Container(
-              color: Colors.white,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
+          Icon(Icons.description, size: 64, color: Colors.grey),
+          SizedBox(height: 16),
+          Text(
+            'Loại file này không thể xem trực tiếp',
+            style: TextStyle(fontSize: 16, color: Colors.grey),
+          ),
+          SizedBox(height: 8),
+          Text(
+            'Vui lòng tải file về để xem',
+            style: TextStyle(fontSize: 14, color: Colors.grey),
+          ),
         ],
       ),
+    );
+  }
+
+  /// Handle file download using the shared service
+  Future<void> _downloadFile() async {
+    final fileName = FileDownloadService.extractFileName(widget.url);
+    await FileDownloadService.downloadFile(
+      url: widget.url,
+      fileName: fileName,
+      context: context,
     );
   }
 }
