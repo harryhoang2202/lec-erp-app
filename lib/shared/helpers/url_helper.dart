@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../constants/url_constants.dart';
+
 /// Helper class for safe URL parsing and formatting
 class UrlHelper {
   /// Safely parses a URL string and returns a Uri object
@@ -138,5 +140,38 @@ class UrlHelper {
       debugPrint('Error formatting ERP URL: $e');
       return null;
     }
+  }
+
+  /// Check if the URL points to a previewable file
+  static bool isPreviewFile(String url) {
+    return UrlConstants.previewFileExtensions.any(
+      (extension) => url.toLowerCase().endsWith(extension),
+    );
+  }
+
+  /// Check if the URL points to a downloadable file
+  static bool isDownloadFile(String url) {
+    return UrlConstants.downloadFileExtensions.any(
+      (extension) => url.toLowerCase().endsWith(extension),
+    );
+  }
+
+  static bool isExternalUrl(String url, String erpUrl) {
+    final Uri? uri = parseUrl(url);
+    if (uri == null) return false;
+    if ([
+      'http',
+      'https',
+      'file',
+      'chrome',
+      'data',
+      'javascript',
+    ].contains(uri.scheme)) {
+      return true;
+    }
+    if (uri.host != erpUrl) {
+      return true;
+    }
+    return false;
   }
 }

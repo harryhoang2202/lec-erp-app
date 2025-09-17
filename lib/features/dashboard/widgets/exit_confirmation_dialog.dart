@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
 
 /// Dialog widget for confirming app exit
 class ExitConfirmationDialog extends StatelessWidget {
@@ -27,10 +26,7 @@ class ExitConfirmationDialog extends StatelessWidget {
         ),
         TextButton(
           onPressed: () => exit(0),
-          child: const Text(
-            'Thoát',
-            style: TextStyle(color: Color(MainScreenConstants.exitButtonColor)),
-          ),
+          child: const Text('Thoát', style: TextStyle(color: Colors.red)),
         ),
       ],
     );

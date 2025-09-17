@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
 
 class WBottomNavBar extends StatelessWidget {
   final Function(int)? onPressed;
@@ -41,21 +42,36 @@ class WBottomNavBar extends StatelessWidget {
                 Expanded(
                   child: InkWell(
                     onTap: () {
-                      onPressed?.call(0);
+                      onPressed?.call(MainScreenConstants.menuTabIndex);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8.0,
                         vertical: 4.0,
                       ),
-                      margin: EdgeInsets.only(left: activeIndex == 0 ? 0 : 16),
-                      alignment: activeIndex == 0
-                          ? Alignment.center
-                          : Alignment.centerLeft,
+                      margin: EdgeInsets.only(left: 16),
+                      alignment: Alignment.centerLeft,
                       decoration: BoxDecoration(
-                        color: activeIndex == 0
-                            ? Colors.black.withValues(alpha: 0.1)
-                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(32.0),
+                      ),
+                      child: Icon(Icons.menu, size: 32.0),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: InkWell(
+                    onTap: () {
+                      onPressed?.call(MainScreenConstants.homeTabIndex);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8.0,
+                        vertical: 4.0,
+                      ),
+
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(32.0),
                       ),
                       child: Icon(Icons.home, size: 32.0),
@@ -65,21 +81,17 @@ class WBottomNavBar extends StatelessWidget {
                 Expanded(
                   child: InkWell(
                     onTap: () {
-                      onPressed?.call(1);
+                      onPressed?.call(MainScreenConstants.notificationTabIndex);
                     },
                     child: Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 8.0,
                         vertical: 4.0,
                       ),
-                      margin: EdgeInsets.only(right: activeIndex == 1 ? 0 : 16),
-                      alignment: activeIndex == 1
-                          ? Alignment.center
-                          : Alignment.centerRight,
+                      margin: EdgeInsets.only(right: 16),
+                      alignment: Alignment.centerRight,
                       decoration: BoxDecoration(
-                        color: activeIndex == 1
-                            ? Colors.black.withValues(alpha: 0.1)
-                            : Colors.transparent,
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(32.0),
                       ),
                       child: Icon(Icons.notifications, size: 32.0),
@@ -93,7 +105,7 @@ class WBottomNavBar extends StatelessWidget {
           if (!Platform.isAndroid)
             InkWell(
               onTap: () {
-                onPressed?.call(2);
+                onPressed?.call(MainScreenConstants.backTabIndex);
               },
               child: Container(
                 height: 48.0,

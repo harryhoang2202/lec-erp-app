@@ -7,8 +7,10 @@ import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.d
 import 'package:hybrid_erp_app/features/dashboard/view_models/main_view_model.dart';
 import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
 import 'package:hybrid_erp_app/features/dashboard/widgets/exit_confirmation_dialog.dart';
+import 'package:hybrid_erp_app/features/drawer/app_drawer.dart';
 
 import 'package:hybrid_erp_app/features/notifications/notification_list_screen.dart';
+import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/webview_config.dart';
@@ -30,6 +32,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   InAppWebViewController? _webViewController;
   String _homeUrl = '';
   int _retryCount = 0;
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  DateTime? timeLastPaused;
 
   @override
   void initState() {
@@ -61,20 +65,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     }
   }
 
-  /// Check if the URL points to a previewable file
-  bool _isPreviewFile(String url) {
-    return MainScreenConstants.previewFileExtensions.any(
-      (extension) => url.toLowerCase().endsWith(extension),
-    );
-  }
-
-  /// Check if the URL points to a downloadable file
-  bool _isDownloadFile(String url) {
-    return MainScreenConstants.downloadFileExtensions.any(
-      (extension) => url.toLowerCase().endsWith(extension),
-    );
-  }
-
   /// Check if the URL contains authentication redirect paths
   bool _isAuthRedirect(String url) {
     return MainScreenConstants.authRedirectPaths.any(
@@ -86,20 +76,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Future<void> _handleAuthRedirect(String url) async {
     if (_retryCount < MainScreenConstants.maxRetries) {
       _retryCount++;
-      debugPrint(
-        'Auth redirect detected, retrying initialization (attempt $_retryCount/${MainScreenConstants.maxRetries})',
-      );
 
       try {
         await _retryInitialization();
       } catch (e) {
-        debugPrint('Retry failed: $e');
         if (_retryCount >= MainScreenConstants.maxRetries) {
           _redirectToSignIn();
         }
       }
     } else {
-      debugPrint('Max retries reached, redirecting to SignInPage');
       _redirectToSignIn();
     }
   }
@@ -187,10 +172,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
     // Don't reload WebView on resume to prevent file upload interruption
     // The WebView will maintain its state automatically
-    debugPrint('App lifecycle changed to: $state');
+
+    switch (state) {
+      case AppLifecycleState.resumed:
+        if (timeLastPaused != null) {
+          final duration = DateTime.now().difference(timeLastPaused!);
+          if (duration.inMinutes > 15) {
+            await _webViewController?.reload();
+          }
+        }
+        break;
+      case AppLifecycleState.paused:
+        timeLastPaused = DateTime.now();
+        break;
+      case AppLifecycleState.detached:
+        break;
+
+      default:
+        break;
+    }
   }
 
   @override
@@ -203,6 +206,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         }
       },
       child: Scaffold(
+        key: _scaffoldKey,
+        drawer: AppDrawer(onLogout: _redirectToSignIn),
         backgroundColor: Colors.white,
         body: SafeArea(
           child: Stack(
@@ -216,12 +221,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                   onPressed: (index) {
                     switch (index) {
                       case 0:
-                        _onHomePressed();
+                        _scaffoldKey.currentState?.openDrawer();
                         break;
                       case 1:
-                        _onNotificationPressed();
+                        _onHomePressed();
                         break;
                       case 2:
+                        _onNotificationPressed();
+                        break;
+                      case 3:
                         _onBackPressed();
                         break;
                     }
@@ -251,16 +259,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         );
       },
       onCreateWindow: (controller, createWindowAction) async {
-        debugPrint('Create window: ${createWindowAction.request.url}');
         // Handle file preview/download
         final url = createWindowAction.request.url;
 
         if (url != null) {
           final urlString = url.toString();
-          if (_isPreviewFile(urlString)) {
+          if (UrlHelper.isPreviewFile(urlString)) {
             _navigateToDocumentPreview(urlString);
             return false;
-          } else if (_isDownloadFile(urlString)) {
+          } else if (UrlHelper.isDownloadFile(urlString)) {
             _handleFileDownload(urlString);
             return false;
           } else if (_isAuthRedirect(urlString)) {
@@ -271,60 +278,34 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
         return true;
       },
 
-      onLoadStart: (controller, url) {
-        debugPrint('Load started: $url');
-        // Don't show loading indicator for file uploads
-        if (url?.toString().contains('file://') == true) {
-          return;
-        }
-      },
       onLoadStop: (controller, url) {
-        debugPrint('Load finished: $url');
         setState(() {
           if (url != null) {
             _viewModel.currentUrl = url.toString();
           }
         });
       },
-      onReceivedError: (controller, request, error) {
-        debugPrint('WebView error: ${error.description}');
-        // Handle specific errors
-        if (error.type == WebResourceErrorType.HOST_LOOKUP) {
-          debugPrint('Network error - check internet connection');
-        } else if (error.type == WebResourceErrorType.TIMEOUT) {
-          debugPrint('Request timeout');
-        }
-      },
-      onReceivedHttpError: (controller, request, errorResponse) {
-        debugPrint('HTTP Error ${errorResponse.statusCode}: ${request.url}');
-        // Don't show error for image requests
-        if (request.url.toString().contains('/LAIP/imgnv/')) {
-          return;
-        }
-      },
-      onConsoleMessage: (controller, consoleMessage) {
-        debugPrint('Console: ${consoleMessage.message}');
-      },
 
       shouldOverrideUrlLoading: (controller, navigationAction) async {
-        final uri = navigationAction.request.url!;
+        final url = navigationAction.request.url?.toString() ?? '';
 
-        if (![
-              'http',
-              'https',
-              'file',
-              'chrome',
-              'data',
-              'javascript',
-              'about',
-            ].contains(uri.scheme) ||
-            uri.host != _viewModel.erpUrl) {
-          if (await canLaunchUrl(uri)) {
-            // Launch the App
-            await launchUrl(uri);
-            // and cancel the request
-            return NavigationActionPolicy.CANCEL;
-          }
+        // Don't show loading indicator for file uploads
+
+        if (UrlHelper.isPreviewFile(url)) {
+          _navigateToDocumentPreview(url);
+          return NavigationActionPolicy.CANCEL;
+        }
+        if (UrlHelper.isDownloadFile(url)) {
+          _handleFileDownload(url);
+          return NavigationActionPolicy.CANCEL;
+        }
+        if (_isAuthRedirect(url)) {
+          _handleAuthRedirect(url);
+          return NavigationActionPolicy.CANCEL;
+        }
+        if (!UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
+          await launchUrl(Uri.parse(url));
+          return NavigationActionPolicy.CANCEL;
         }
         return NavigationActionPolicy.ALLOW;
       },
