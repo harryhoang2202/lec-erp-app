@@ -98,9 +98,21 @@ class NotificationHelper {
 
   static Future<void> _saveNotificationToDatabase(RemoteMessage message) async {
     try {
-      final notification = NotificationModel.fromRemoteMessage(message);
+      // Lấy username hiện tại đang login
+      final currentUsername = await _getCurrentUsername();
+      if (currentUsername == null) {
+        debugPrint('No user logged in, skipping notification save');
+        return;
+      }
+
+      final notification = NotificationModel.fromRemoteMessage(
+        message,
+        username: currentUsername,
+      );
       await NotificationService.instance.saveNotification(notification);
-      debugPrint('Notification saved to database: ${notification.messageId}');
+      debugPrint(
+        'Notification saved to database: ${notification.messageId} for user: $currentUsername',
+      );
     } catch (e) {
       debugPrint('Error saving notification to database: $e');
     }
@@ -157,6 +169,34 @@ class NotificationHelper {
   static Future<String?> getToken() async {
     return await _firebaseMessaging.getToken();
   }
+
+  // Lấy username hiện tại đang login
+  static Future<String?> _getCurrentUsername() async {
+    try {
+      final user = await StorageService.getUserCredentials();
+      if (user != null && user.isLoggedIn) {
+        return user.username;
+      }
+      return null;
+    } catch (e) {
+      debugPrint('Error getting current username: $e');
+      return null;
+    }
+  }
+}
+
+// Helper function for background handler to get current username
+Future<String?> _getCurrentUsernameForBackground() async {
+  try {
+    final user = await StorageService.getUserCredentials();
+    if (user != null && user.isLoggedIn) {
+      return user.username;
+    }
+    return null;
+  } catch (e) {
+    debugPrint('Error getting current username in background: $e');
+    return null;
+  }
 }
 
 // This function must be a top-level function
@@ -167,10 +207,20 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Lưu notification vào database khi app ở background
   try {
-    final notification = NotificationModel.fromRemoteMessage(message);
+    // Lấy username hiện tại đang login
+    final currentUsername = await _getCurrentUsernameForBackground();
+    if (currentUsername == null) {
+      debugPrint('No user logged in, skipping background notification save');
+      return;
+    }
+
+    final notification = NotificationModel.fromRemoteMessage(
+      message,
+      username: currentUsername,
+    );
     await NotificationService.instance.saveNotification(notification);
     debugPrint(
-      'Background notification saved to database: ${notification.messageId}',
+      'Background notification saved to database: ${notification.messageId} for user: $currentUsername',
     );
   } catch (e) {
     debugPrint('Error saving background notification to database: $e');

@@ -23,10 +23,14 @@ class NotificationService {
     }
 
     try {
-      // Kiểm tra xem notification đã tồn tại chưa
+      // Kiểm tra xem notification đã tồn tại chưa (theo messageId và username)
       final allNotifications = _notificationBox!.getAll();
       final existing = allNotifications
-          .where((n) => n.messageId == notification.messageId)
+          .where(
+            (n) =>
+                n.messageId == notification.messageId &&
+                n.username == notification.username,
+          )
           .firstOrNull;
 
       if (existing == null) {
@@ -39,6 +43,7 @@ class NotificationService {
 
   // Lấy danh sách notification với phân trang
   Future<List<NotificationModel>> getNotifications({
+    required String username,
     int page = 1,
     int pageSize = 20,
     bool? isRead,
@@ -50,6 +55,11 @@ class NotificationService {
 
     try {
       List<NotificationModel> allNotifications = _notificationBox!.getAll();
+
+      // Lọc theo username trước
+      allNotifications = allNotifications
+          .where((n) => n.username == username)
+          .toList();
 
       // Lọc theo trạng thái đọc
       if (isRead != null) {
@@ -102,7 +112,7 @@ class NotificationService {
   }
 
   // Đánh dấu tất cả notification đã đọc
-  Future<void> markAllAsRead() async {
+  Future<void> markAllAsRead({required String username}) async {
     if (_notificationBox == null) {
       throw Exception('NotificationService chưa được khởi tạo');
     }
@@ -110,7 +120,7 @@ class NotificationService {
     try {
       final allNotifications = _notificationBox!.getAll();
       final unreadNotifications = allNotifications
-          .where((n) => !n.isRead)
+          .where((n) => !n.isRead && n.username == username)
           .toList();
 
       for (final notification in unreadNotifications) {
@@ -149,15 +159,37 @@ class NotificationService {
     }
   }
 
-  // Đếm số notification chưa đọc
-  Future<int> getUnreadCount() async {
+  // Xóa tất cả notification của một user
+  Future<void> deleteAllNotificationsForUser({required String username}) async {
     if (_notificationBox == null) {
       throw Exception('NotificationService chưa được khởi tạo');
     }
 
     try {
       final allNotifications = _notificationBox!.getAll();
-      return allNotifications.where((n) => !n.isRead).length;
+      final userNotifications = allNotifications
+          .where((n) => n.username == username)
+          .toList();
+
+      for (final notification in userNotifications) {
+        _notificationBox!.remove(notification.id);
+      }
+    } catch (e) {
+      throw Exception('Lỗi khi xóa notification của user: $e');
+    }
+  }
+
+  // Đếm số notification chưa đọc
+  Future<int> getUnreadCount({required String username}) async {
+    if (_notificationBox == null) {
+      throw Exception('NotificationService chưa được khởi tạo');
+    }
+
+    try {
+      final allNotifications = _notificationBox!.getAll();
+      return allNotifications
+          .where((n) => !n.isRead && n.username == username)
+          .length;
     } catch (e) {
       throw Exception('Lỗi khi đếm notification chưa đọc: $e');
     }
@@ -173,6 +205,20 @@ class NotificationService {
       return _notificationBox!.count();
     } catch (e) {
       throw Exception('Lỗi khi đếm tổng số notification: $e');
+    }
+  }
+
+  // Đếm tổng số notification của một user
+  Future<int> getTotalCountForUser({required String username}) async {
+    if (_notificationBox == null) {
+      throw Exception('NotificationService chưa được khởi tạo');
+    }
+
+    try {
+      final allNotifications = _notificationBox!.getAll();
+      return allNotifications.where((n) => n.username == username).length;
+    } catch (e) {
+      throw Exception('Lỗi khi đếm tổng số notification của user: $e');
     }
   }
 }

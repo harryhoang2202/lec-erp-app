@@ -22,6 +22,9 @@ class NotificationModel {
   String? topic;
   String? category;
 
+  // Username của user nhận notification
+  String username;
+
   NotificationModel({
     this.id = 0,
     required this.messageId,
@@ -33,6 +36,7 @@ class NotificationModel {
     this.isRead = false,
     this.topic,
     this.category,
+    required this.username,
   });
 
   // Getter for data
@@ -43,7 +47,10 @@ class NotificationModel {
     dataJson = json.encode(value);
   }
 
-  factory NotificationModel.fromRemoteMessage(dynamic message) {
+  factory NotificationModel.fromRemoteMessage(
+    dynamic message, {
+    required String username,
+  }) {
     final dataMap = Map<String, dynamic>.from(message.data ?? {});
     return NotificationModel(
       messageId:
@@ -55,6 +62,7 @@ class NotificationModel {
           message.notification?.apple?.imageUrl,
       dataJson: json.encode(dataMap),
       createdAt: DateTime.now(),
+      username: username,
     );
   }
 
@@ -70,6 +78,7 @@ class NotificationModel {
       'isRead': isRead,
       'topic': topic,
       'category': category,
+      'username': username,
     };
   }
 
@@ -85,6 +94,7 @@ class NotificationModel {
       isRead: json['isRead'] ?? false,
       topic: json['topic'],
       category: json['category'],
+      username: json['username'] ?? '',
     );
   }
 }

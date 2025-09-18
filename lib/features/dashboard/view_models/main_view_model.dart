@@ -5,6 +5,7 @@ import 'package:hybrid_erp_app/data/models/user_model.dart';
 import 'package:hybrid_erp_app/shared/helpers/notification_helper.dart';
 import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:hybrid_erp_app/data/services/storage_service.dart';
+import 'package:hybrid_erp_app/data/services/notification_service.dart';
 
 class MainViewModel with ChangeNotifier {
   String? _fcmToken;
@@ -60,7 +61,7 @@ class MainViewModel with ChangeNotifier {
         queryParameters: {
           'username': user.username,
           'password': user.password,
-          'tokenID': await StorageService.getDeviceId() ?? '<tokenmachine>',
+          'tokeID': await StorageService.getDeviceId() ?? '<tokenmachine>',
           'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
         },
       );
@@ -76,9 +77,20 @@ class MainViewModel with ChangeNotifier {
     // Clear login status
     await StorageService.updateLoginStatus(false);
 
-    // If remember me is disabled, clear all credentials
+    // If remember me is disabled, clear all credentials and notifications
     if (currentUser != null && !currentUser.rememberMe) {
       await StorageService.clearUserCredentials();
+      // Cleanup notifications for this user
+      try {
+        await NotificationService.instance.deleteAllNotificationsForUser(
+          username: currentUser.username,
+        );
+        debugPrint(
+          'Cleaned up notifications for user: ${currentUser.username}',
+        );
+      } catch (e) {
+        debugPrint('Error cleaning up notifications: $e');
+      }
     }
 
     _currentUrl = null;

@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:6890465762639014486",
-      "lastPropertyId": "10:1857234628318824981",
+      "lastPropertyId": "11:4421409433176504477",
       "name": "NotificationModel",
       "properties": [
         {
@@ -59,6 +59,11 @@
         {
           "id": "10:1857234628318824981",
           "name": "dataJson",
+          "type": 9
+        },
+        {
+          "id": "11:4421409433176504477",
+          "name": "username",
           "type": 9
         }
       ],

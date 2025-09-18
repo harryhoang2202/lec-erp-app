@@ -15,6 +15,10 @@
 
     <!-- Permission for location -->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION"/>
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+
 
     <!-- Permission for storage -->
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" />

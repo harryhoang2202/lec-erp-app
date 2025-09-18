@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
+import '../../data/services/storage_service.dart';
 
 class NotificationListScreen extends StatefulWidget {
   const NotificationListScreen({super.key});
@@ -18,12 +19,29 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   final int _pageSize = 20;
   String? _selectedCategory;
   bool? _selectedReadStatus;
+  String? _currentUsername;
 
   @override
   void initState() {
     super.initState();
-    _loadNotifications();
+    _getCurrentUser();
     _scrollController.addListener(_onScroll);
+  }
+
+  Future<void> _getCurrentUser() async {
+    try {
+      final user = await StorageService.getUserCredentials();
+      if (user != null && user.isLoggedIn) {
+        setState(() {
+          _currentUsername = user.username;
+        });
+        _loadNotifications();
+      } else {
+        _showErrorSnackBar('Vui lòng đăng nhập để xem thông báo');
+      }
+    } catch (e) {
+      _showErrorSnackBar('Lỗi khi lấy thông tin user: $e');
+    }
   }
 
   @override
@@ -42,7 +60,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   Future<void> _loadNotifications({bool refresh = false}) async {
-    if (_isLoading) return;
+    if (_isLoading || _currentUsername == null) return;
 
     setState(() {
       _isLoading = true;
@@ -57,6 +75,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
 
       final newNotifications = await NotificationService.instance
           .getNotifications(
+            username: _currentUsername!,
             page: _currentPage,
             pageSize: _pageSize,
             isRead: _selectedReadStatus,
@@ -80,7 +99,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   Future<void> _loadMoreNotifications() async {
-    if (_isLoading || !_hasMoreData) return;
+    if (_isLoading || !_hasMoreData || _currentUsername == null) return;
 
     setState(() {
       _isLoading = true;
@@ -90,6 +109,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       _currentPage++;
       final newNotifications = await NotificationService.instance
           .getNotifications(
+            username: _currentUsername!,
             page: _currentPage,
             pageSize: _pageSize,
             isRead: _selectedReadStatus,
@@ -122,8 +142,12 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   Future<void> _markAllAsRead() async {
+    if (_currentUsername == null) return;
+
     try {
-      await NotificationService.instance.markAllAsRead();
+      await NotificationService.instance.markAllAsRead(
+        username: _currentUsername!,
+      );
       setState(() {
         for (final notification in _notifications) {
           notification.isRead = true;
@@ -168,7 +192,9 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
       ),
       body: RefreshIndicator(
         onRefresh: () => _loadNotifications(refresh: true),
-        child: _notifications.isEmpty && !_isLoading
+        child: _currentUsername == null
+            ? const Center(child: Text('Vui lòng đăng nhập để xem thông báo'))
+            : _notifications.isEmpty && !_isLoading
             ? const Center(child: Text('Không có thông báo nào'))
             : ListView.separated(
                 controller: _scrollController,

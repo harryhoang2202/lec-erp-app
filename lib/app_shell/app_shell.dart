@@ -24,6 +24,7 @@ class _AppShellState extends State<AppShell> {
     await Permission.camera.request();
     await Permission.photos.request();
     await Permission.storage.request();
+    await Permission.location.request();
     await Permission.manageExternalStorage.request();
   }
 

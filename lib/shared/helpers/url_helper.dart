@@ -167,11 +167,13 @@ class UrlHelper {
       'data',
       'javascript',
     ].contains(uri.scheme)) {
-      return true;
+      if (uri.host == erpUrl) {
+        return false;
+      } else {
+        return true;
+      }
     }
-    if (uri.host != erpUrl) {
-      return true;
-    }
-    return false;
+
+    return true;
   }
 }

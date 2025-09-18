@@ -37,11 +37,11 @@ class AuthService {
       final UserModel? user = await StorageService.getUserCredentials();
       if (user == null) {
         response = await dio.get(registerUrl, queryParameters: params);
+      } else {
+        response = await dio.get(fullUrl, queryParameters: params);
       }
       // Make POST request to sign-in endpoint
       // check if user is already registered
-
-      response = await dio.get(fullUrl, queryParameters: params);
 
       // Check if request was successful
       if (response.statusCode == 200) {

@@ -7,7 +7,7 @@ class WebViewConfig {
   /// Get default InAppWebView settings optimized for ERP application
   static InAppWebViewSettings get defaultSettings => InAppWebViewSettings(
     // Basic settings
-    iframeAllow: "camera; microphone;",
+    iframeAllow: "camera; microphone; geolocation;",
     javaScriptCanOpenWindowsAutomatically: true,
     useShouldOverrideUrlLoading: true,
     useShouldInterceptFetchRequest: true,
@@ -33,6 +33,7 @@ class WebViewConfig {
     javaScriptEnabled: true,
     domStorageEnabled: true,
     databaseEnabled: true,
+    geolocationEnabled: true,
 
     // Security settings
     allowsLinkPreview: false,

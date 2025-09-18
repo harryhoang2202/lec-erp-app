@@ -7,13 +7,13 @@ import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.d
 import 'package:hybrid_erp_app/features/dashboard/view_models/main_view_model.dart';
 import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
 import 'package:hybrid_erp_app/features/dashboard/widgets/exit_confirmation_dialog.dart';
-import 'package:hybrid_erp_app/features/drawer/app_drawer.dart';
 
 import 'package:hybrid_erp_app/features/notifications/notification_list_screen.dart';
 import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/webview_config.dart';
+import '../widgets/logout_confirmation_dialog.dart';
 import '../widgets/w_bottom_nav_bar.dart';
 
 /// Main screen that displays the ERP web application in a WebView
@@ -149,6 +149,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     );
   }
 
+  /// Show logout confirmation dialog
+  Future<void> _showLogoutDialog() async {
+    final result = await showDialog(
+      context: context,
+      builder: (context) => const LogoutConfirmationDialog(),
+    );
+    if (result == true) {
+      _redirectToSignIn();
+    }
+  }
+
+  /// Open external URL
+  Future<void> _openExternalUrl(String url) async {
+    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+  }
+
   /// Navigate to home URL
   Future<void> _onHomePressed() async {
     if (_homeUrl.isNotEmpty) {
@@ -207,39 +223,28 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       },
       child: Scaffold(
         key: _scaffoldKey,
-        drawer: AppDrawer(onLogout: _redirectToSignIn),
+
         backgroundColor: Colors.white,
-        body: SafeArea(
-          child: Stack(
-            children: [
-              _buildWebView(),
-              Positioned(
-                bottom: 16.0,
-                left: 0,
-                right: 0,
-                child: WBottomNavBar(
-                  onPressed: (index) {
-                    switch (index) {
-                      case 0:
-                        _scaffoldKey.currentState?.openDrawer();
-                        break;
-                      case 1:
-                        _onHomePressed();
-                        break;
-                      case 2:
-                        _onNotificationPressed();
-                        break;
-                      case 3:
-                        _onBackPressed();
-                        break;
-                    }
-                  },
-                  activeIndex: MainScreenConstants.homeTabIndex,
-                ),
-              ),
-            ],
-          ),
+        bottomNavigationBar: WBottomNavBar(
+          onPressed: (index) {
+            switch (index) {
+              case 0:
+                _showLogoutDialog();
+                break;
+              case 1:
+                _onHomePressed();
+                break;
+              case 2:
+                _onNotificationPressed();
+                break;
+              case 3:
+                _onBackPressed();
+                break;
+            }
+          },
+          activeIndex: MainScreenConstants.homeTabIndex,
         ),
+        body: SafeArea(child: _buildWebView()),
       ),
     );
   }
@@ -258,6 +263,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           action: PermissionResponseAction.GRANT,
         );
       },
+      onGeolocationPermissionsShowPrompt: (controller, origin) async {
+        return GeolocationPermissionShowPromptResponse(
+          origin: origin,
+          allow: true,
+          retain: true,
+        );
+      },
+
       onCreateWindow: (controller, createWindowAction) async {
         // Handle file preview/download
         final url = createWindowAction.request.url;
@@ -272,6 +285,12 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
             return false;
           } else if (_isAuthRedirect(urlString)) {
             _handleAuthRedirect(urlString);
+            return false;
+          } else if (UrlHelper.isExternalUrl(
+            url.toString(),
+            _viewModel.erpUrl ?? '',
+          )) {
+            _openExternalUrl(url.toString());
             return false;
           }
         }
@@ -303,8 +322,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _handleAuthRedirect(url);
           return NavigationActionPolicy.CANCEL;
         }
-        if (!UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
-          await launchUrl(Uri.parse(url));
+        if (UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
+          _openExternalUrl(url);
           return NavigationActionPolicy.CANCEL;
         }
         return NavigationActionPolicy.ALLOW;
