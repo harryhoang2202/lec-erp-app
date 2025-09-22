@@ -1,12 +1,18 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:hybrid_erp_app/app_shell/app_shell.dart';
 import 'package:hybrid_erp_app/data/models/user_model.dart';
+import 'package:hybrid_erp_app/data/services/network_service.dart';
+import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
 import 'package:hybrid_erp_app/shared/helpers/notification_helper.dart';
 import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:hybrid_erp_app/data/services/storage_service.dart';
 import 'package:hybrid_erp_app/data/services/notification_service.dart';
+import 'package:injectable/injectable.dart';
 
+@lazySingleton
 class MainViewModel with ChangeNotifier {
   String? _fcmToken;
   bool _isLoading = false;
@@ -16,6 +22,20 @@ class MainViewModel with ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get currentUrl => _currentUrl;
   String? get erpUrl => _erpUrl;
+  String _homeUrl = '';
+  String get homeUrl => _homeUrl;
+  set homeUrl(String homeUrl) {
+    _homeUrl = homeUrl;
+    notifyListeners();
+  }
+
+  InAppWebViewController? _webViewController;
+  set webViewController(InAppWebViewController? webViewController) {
+    _webViewController = webViewController;
+    notifyListeners();
+  }
+
+  InAppWebViewController? get webViewController => _webViewController;
   set currentUrl(String? url) {
     _currentUrl = url;
     notifyListeners();
@@ -95,5 +115,37 @@ class MainViewModel with ChangeNotifier {
 
     _currentUrl = null;
     notifyListeners();
+  }
+
+  Future<void> loadUrlWithNetworkCheck(String url) async {
+    // Kiểm tra kết nối mạng trước khi load URL
+    final hasConnection = await NetworkService().hasConnection();
+    if (!hasConnection) {
+      NetworkService.showNoConnectionSnackBar(navigatorKey.currentContext!);
+      redirectToSignIn();
+      return;
+    }
+
+    // Kiểm tra xem có thể reach được URL không
+    final canReachUrl = await NetworkService().canReachUrl(url);
+    if (!canReachUrl) {
+      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
+        SnackBar(
+          content: Text('Không thể kết nối đến: $url'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Load URL nếu có kết nối
+    await _webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
+  }
+
+  void redirectToSignIn() {
+    signOut();
+    Navigator.of(navigatorKey.currentContext!).pushReplacement(
+      MaterialPageRoute(builder: (context) => const SignInPage()),
+    );
   }
 }

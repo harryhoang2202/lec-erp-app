@@ -8,9 +8,4 @@ class MainScreenConstants {
     'Account/LogOff',
     'Account/LogOn',
   ];
-  // Navigation bar configuration
-  static const int logoutTabIndex = 0;
-  static const int homeTabIndex = 1;
-  static const int notificationTabIndex = 2;
-  static const int backTabIndex = 3;
 }

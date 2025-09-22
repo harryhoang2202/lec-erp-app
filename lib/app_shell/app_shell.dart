@@ -5,6 +5,8 @@ import 'package:provider/provider.dart';
 import '../features/authentication/view_models/sign_in_view_model.dart';
 import 'splash_screen.dart';
 
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 class AppShell extends StatefulWidget {
   const AppShell({super.key});
 
@@ -34,6 +36,7 @@ class _AppShellState extends State<AppShell> {
     return MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => SignInViewModel())],
       child: MaterialApp(
+        key: navigatorKey,
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           primaryColor: const Color(0xFF1D24AB),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/storage_service.dart';
+import '../../../data/services/network_service.dart';
 
 /// View model for handling sign-in logic and state management
 class SignInViewModel extends ChangeNotifier {
@@ -133,6 +134,16 @@ class SignInViewModel extends ChangeNotifier {
 
     // Validate form
     if (!formKey.currentState!.validate()) {
+      return false;
+    }
+
+    // Kiểm tra kết nối mạng trước khi đăng nhập
+    final hasConnection = await NetworkService().hasConnection();
+    if (!hasConnection) {
+      _setError(
+        'Không có kết nối internet. Vui lòng kiểm tra lại kết nối mạng.',
+      );
+      _setLoading(false);
       return false;
     }
 

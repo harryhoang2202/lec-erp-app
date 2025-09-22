@@ -1,20 +1,9 @@
 import 'package:flutter/material.dart';
 import 'app_shell/app_shell.dart';
-import 'resources/objectbox/objectbox.g.dart';
-import 'shared/helpers/notification_helper.dart';
-import 'data/services/notification_service.dart';
+import 'config/config.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize ObjectBox store
-  final store = await openStore();
-
-  // Initialize NotificationService
-  NotificationService.initialize(store);
-
-  // Initialize Firebase notifications
-  await NotificationHelper.initialize();
-
+  await Config.getInstance().config();
   runApp(const AppShell());
 }
