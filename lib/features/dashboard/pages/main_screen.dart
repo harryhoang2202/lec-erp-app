@@ -31,6 +31,7 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   int _retryCount = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   DateTime? timeLastPaused;
+  bool _isLoading = false;
 
   @override
   void initState() {
@@ -42,6 +43,9 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// Initialize view model and load URL (shared logic)
   Future<void> _initializeViewModelAndLoadUrl() async {
     try {
+      setState(() {
+        _isLoading = true;
+      });
       await _viewModel.initialize();
       _retryCount = 0; // Reset retry counter on successful initialization
       _viewModel.homeUrl = 'https://${_viewModel.erpUrl}/Home';
@@ -59,9 +63,13 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
   /// Check if the URL contains authentication redirect paths
   bool _isAuthRedirect(String url) {
-    return MainScreenConstants.authRedirectPaths.any(
-      (path) => url.contains(path),
-    );
+    final uri = Uri.parse(url);
+    if (uri.host == _viewModel.erpUrl) {
+      return MainScreenConstants.authRedirectPaths.any(
+        (path) => url.contains(path),
+      );
+    }
+    return false;
   }
 
   /// Handle authentication redirect with retry logic
@@ -148,7 +156,21 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
 
       backgroundColor: Colors.white,
       bottomNavigationBar: WBottomNavBar(),
-      body: SafeArea(child: _buildWebView()),
+      body: SafeArea(
+        child: Stack(
+          children: [
+            _buildWebView(),
+            if (_isLoading)
+              Container(
+                color: Colors.white.withValues(alpha: 0.2),
+                height: double.infinity,
+                width: double.infinity,
+                alignment: Alignment.center,
+                child: CircularProgressIndicator(),
+              ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -186,26 +208,33 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           } else if (UrlHelper.isDownloadFile(urlString)) {
             _handleFileDownload(urlString);
             return false;
-          } else if (_isAuthRedirect(urlString)) {
-            _handleAuthRedirect(urlString);
-            return false;
           } else if (UrlHelper.isExternalUrl(
             url.toString(),
             _viewModel.erpUrl ?? '',
           )) {
             _openExternalUrl(url.toString());
             return false;
+          } else if (_isAuthRedirect(urlString)) {
+            _handleAuthRedirect(urlString);
+            return false;
           }
         }
         return true;
       },
-
+      onLoadStart: (controller, url) {
+        if (mounted) {
+          setState(() {
+            _isLoading = true;
+          });
+        }
+      },
       onLoadStop: (controller, url) {
         if (mounted) {
           setState(() {
             if (url != null) {
               _viewModel.currentUrl = url.toString();
             }
+            _isLoading = false;
           });
         }
       },
@@ -226,14 +255,15 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
           _handleFileDownload(url);
           return NavigationActionPolicy.CANCEL;
         }
-        if (_isAuthRedirect(url)) {
-          _handleAuthRedirect(url);
-          return NavigationActionPolicy.CANCEL;
-        }
         if (UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
           _openExternalUrl(url);
           return NavigationActionPolicy.CANCEL;
         }
+        if (_isAuthRedirect(url)) {
+          _handleAuthRedirect(url);
+          return NavigationActionPolicy.CANCEL;
+        }
+
         return NavigationActionPolicy.ALLOW;
       },
     );

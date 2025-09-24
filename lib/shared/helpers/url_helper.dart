@@ -167,7 +167,7 @@ class UrlHelper {
       'data',
       'javascript',
     ].contains(uri.scheme)) {
-      if (uri.host == erpUrl) {
+      if (isSameRootDomain(uri.host, erpUrl)) {
         return false;
       } else {
         return true;
@@ -175,5 +175,19 @@ class UrlHelper {
     }
 
     return true;
+  }
+
+  static bool isSameRootDomain(String url1, String url2) {
+    String getRootDomain(String url) {
+      final uri = Uri.parse(url);
+      final parts = uri.host.split('.');
+      if (parts.length >= 2) {
+        return "${parts[parts.length - 2]}.${parts.last}";
+      }
+      return uri.host; // fallback nếu host ko hợp lệ
+    }
+
+    return getRootDomain(url1).toLowerCase() ==
+        getRootDomain(url2).toLowerCase();
   }
 }
