@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/storage_service.dart';
@@ -318,16 +319,13 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   void _handleNotificationTap(NotificationModel notification) {
-    // Handle navigation based on notification data
-    final data = notification.data;
-
-    // Example navigation logic
-    if (data.containsKey('screen')) {
-      final screen = data['screen'];
-      // Navigate to specific screen based on notification data
-      debugPrint('Navigate to screen: $screen');
+    if (notification.url != null) {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => MainScreen(initialUrl: notification.url),
+        ),
+      );
     }
-
-    // You can add more navigation logic here based on your app's requirements
   }
 }

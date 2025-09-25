@@ -21,6 +21,7 @@ class NotificationModel {
   bool isRead;
   String? topic;
   String? category;
+  String? url;
 
   // Username của user nhận notification
   String username;
@@ -37,6 +38,7 @@ class NotificationModel {
     this.topic,
     this.category,
     required this.username,
+    this.url,
   });
 
   // Getter for data
@@ -63,6 +65,7 @@ class NotificationModel {
       dataJson: json.encode(dataMap),
       createdAt: DateTime.now(),
       username: username,
+      url: dataMap['url'],
     );
   }
 
@@ -79,6 +82,7 @@ class NotificationModel {
       'topic': topic,
       'category': category,
       'username': username,
+      'url': url,
     };
   }
 
@@ -95,6 +99,7 @@ class NotificationModel {
       topic: json['topic'],
       category: json['category'],
       username: json['username'] ?? '',
+      url: json['url'],
     );
   }
 }

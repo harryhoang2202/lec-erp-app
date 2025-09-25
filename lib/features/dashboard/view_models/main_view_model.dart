@@ -4,137 +4,99 @@ import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:hybrid_erp_app/app_shell/app_shell.dart';
 import 'package:hybrid_erp_app/data/models/user_model.dart';
-import 'package:hybrid_erp_app/data/services/network_service.dart';
-import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
-import 'package:hybrid_erp_app/shared/helpers/notification_helper.dart';
+import 'package:hybrid_erp_app/data/services/auth_service.dart';
+import 'package:hybrid_erp_app/shared/helpers/network_helper.dart';
 import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:hybrid_erp_app/data/services/storage_service.dart';
-import 'package:hybrid_erp_app/data/services/notification_service.dart';
 import 'package:injectable/injectable.dart';
+
+import '../constants/main_screen_constants.dart';
 
 @lazySingleton
 class MainViewModel with ChangeNotifier {
-  String? _fcmToken;
-  bool _isLoading = false;
-  String? _currentUrl;
-  String? _erpUrl;
-  String? get fcmToken => _fcmToken;
-  bool get isLoading => _isLoading;
-  String? get currentUrl => _currentUrl;
-  String? get erpUrl => _erpUrl;
-  String _homeUrl = '';
-  String get homeUrl => _homeUrl;
-  set homeUrl(String homeUrl) {
-    _homeUrl = homeUrl;
-    notifyListeners();
-  }
+  bool isLoading = false;
+  int _retryCount = 0;
+  String? erpUrl;
+  String? lastNonAuthNavigatingUrl;
+  String homeUrl = '';
+  UserModel? currentUser;
 
   InAppWebViewController? _webViewController;
-  set webViewController(InAppWebViewController? webViewController) {
-    _webViewController = webViewController;
-    notifyListeners();
-  }
 
   InAppWebViewController? get webViewController => _webViewController;
-  set currentUrl(String? url) {
-    _currentUrl = url;
+
+  set webViewController(InAppWebViewController? value) {
+    _webViewController = value;
     notifyListeners();
   }
 
   Future<void> initialize() async {
-    _isLoading = true;
+    isLoading = true;
     notifyListeners();
-    UserModel? user = await StorageService.getUserCredentials();
-    if (user == null) {
-      _isLoading = false;
+    currentUser = await StorageService.getUserCredentials();
+    if (currentUser == null) {
+      isLoading = false;
       notifyListeners();
       return;
     } else {
-      try {
-        _erpUrl = user.erpUrl;
-        final token = await NotificationHelper.getToken();
-        _fcmToken = token;
-      } catch (e) {
-        debugPrint('Error getting FCM token: $e');
-      } finally {
-        _isLoading = false;
-        notifyListeners();
-      }
-      final UserModel? savedUser = await StorageService.getUserCredentials();
-      String loginPath = savedUser != null
-          ? '/Account/LogInMobile'
-          : '/Account/RegisterMobileLogIn';
-
-      // Parse the ERP URL safely using UrlHelper
-      final Uri? erpUri = UrlHelper.parseUrl(user.erpUrl);
-      if (erpUri == null) {
-        debugPrint('Invalid ERP URL: ${user.erpUrl}');
-        _isLoading = false;
-        notifyListeners();
-        return;
-      }
-
-      Uri uri = Uri(
-        scheme: erpUri.scheme,
-        host: erpUri.host,
-        path: loginPath,
-        queryParameters: {
-          'username': user.username,
-          'password': user.password,
-          'tokeID': await StorageService.getDeviceId() ?? '<tokenmachine>',
-          'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
-        },
-      );
-      _currentUrl = uri.toString();
+      erpUrl = currentUser!.erpUrl;
+      homeUrl = 'https://$erpUrl/Home';
+      notifyListeners();
+      await signIn();
       notifyListeners();
     }
   }
 
-  Future<void> signOut() async {
-    // Get current user to check remember me status
-    final UserModel? currentUser = await StorageService.getUserCredentials();
+  // Sign in logic
+  Future<bool> signIn({String? baseUrl}) async {
+    String loginPath = currentUser != null
+        ? '/Account/LogInMobile'
+        : '/Account/RegisterMobileLogIn';
 
-    // Clear login status
-    await StorageService.updateLoginStatus(false);
-
-    // If remember me is disabled, clear all credentials and notifications
-    if (currentUser != null && !currentUser.rememberMe) {
-      await StorageService.clearUserCredentials();
-      // Cleanup notifications for this user
-      try {
-        await NotificationService.instance.deleteAllNotificationsForUser(
-          username: currentUser.username,
-        );
-        debugPrint(
-          'Cleaned up notifications for user: ${currentUser.username}',
-        );
-      } catch (e) {
-        debugPrint('Error cleaning up notifications: $e');
-      }
+    // Parse the ERP URL safely using UrlHelper
+    final Uri? erpUri = UrlHelper.parseUrl(baseUrl ?? currentUser!.erpUrl);
+    if (erpUri == null) {
+      debugPrint('Invalid ERP URL: ${baseUrl ?? currentUser!.erpUrl}');
+      isLoading = false;
+      notifyListeners();
+      return false;
     }
 
-    _currentUrl = null;
+    Uri uri = Uri(
+      scheme: erpUri.scheme,
+      host: erpUri.host,
+      path: loginPath,
+      queryParameters: {
+        'username': currentUser!.username,
+        'password': currentUser!.password,
+        'tokeID': await StorageService.getDeviceId() ?? '<tokenmachine>',
+        'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
+      },
+    );
+    await Future.delayed(Duration(milliseconds: 500), () async {
+      await _webViewController?.loadUrl(
+        urlRequest: URLRequest(url: WebUri(uri.toString())),
+      );
+    });
+
+    _retryCount = 0;
+    notifyListeners();
+    return true;
+  }
+
+  Future<void> signOut() async {
+    await AuthService.signOut();
+    erpUrl = null;
+    homeUrl = '';
+    isLoading = false;
     notifyListeners();
   }
 
   Future<void> loadUrlWithNetworkCheck(String url) async {
     // Kiểm tra kết nối mạng trước khi load URL
-    final hasConnection = await NetworkService().hasConnection();
+    final hasConnection = await NetworkHelper.instance.canReachUrl(url);
     if (!hasConnection) {
-      NetworkService.showNoConnectionSnackBar(navigatorKey.currentContext!);
-      redirectToSignIn();
-      return;
-    }
-
-    // Kiểm tra xem có thể reach được URL không
-    final canReachUrl = await NetworkService().canReachUrl(url);
-    if (!canReachUrl) {
-      ScaffoldMessenger.of(navigatorKey.currentContext!).showSnackBar(
-        SnackBar(
-          content: Text('Không thể kết nối đến: $url'),
-          backgroundColor: Colors.orange,
-        ),
-      );
+      NetworkHelper.showNoConnectionSnackBar(navigatorKey.currentContext!);
       return;
     }
 
@@ -142,10 +104,53 @@ class MainViewModel with ChangeNotifier {
     await _webViewController?.loadUrl(urlRequest: URLRequest(url: WebUri(url)));
   }
 
-  void redirectToSignIn() {
-    signOut();
-    Navigator.of(navigatorKey.currentContext!).pushReplacement(
-      MaterialPageRoute(builder: (context) => const SignInPage()),
-    );
+  /// Handle authentication redirect with retry logic
+  Future<void> handleAuthRedirect(String url) async {
+    final Uri? targetUri = UrlHelper.parseUrl(url);
+    if (targetUri == null) {
+      return;
+    }
+
+    // Lấy domain/scheme từ URL auth
+    final String erpUrl = Uri(
+      scheme: targetUri.scheme,
+      host: targetUri.host,
+    ).toString();
+
+    // Lấy thông tin user đã lưu
+    if (currentUser == null) {
+      return;
+    }
+
+    // Chống vòng lặp: chỉ thử lại giới hạn số lần
+    if (_retryCount >= MainScreenConstants.maxRetries) {
+      return;
+    }
+    _retryCount++;
+
+    try {
+      // Đăng nhập nền với domain trích xuất và credentials đã lưu
+      final bool loggedIn = await signIn(baseUrl: erpUrl);
+      if (!loggedIn) {
+        return;
+      }
+
+      // Nếu sau đăng nhập mà hệ thống redirect về Home, cần điều hướng lại trang mong muốn
+      final String? pendingUrl = lastNonAuthNavigatingUrl;
+
+      // Trường hợp có URL mong muốn trước đó và cùng domain -> load lại URL đó
+      if (pendingUrl != null) {
+        final Uri? pendingUri = UrlHelper.parseUrl(pendingUrl);
+        if (pendingUri != null && pendingUri.host == targetUri.host) {
+          await loadUrlWithNetworkCheck(pendingUri.toString());
+          return;
+        }
+      }
+
+      // Nếu không có pendingUrl hợp lệ, reload home
+      await loadUrlWithNetworkCheck(UrlHelper.formatUrl(homeUrl));
+    } catch (e) {
+      debugPrint('Error during authentication redirect: $e');
+    }
   }
 }

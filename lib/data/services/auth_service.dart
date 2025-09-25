@@ -91,4 +91,15 @@ class AuthService {
         password.isNotEmpty &&
         isValidUrl(erpUrl);
   }
+
+  static Future<void> signOut() async {
+    // Get current user to check remember me status
+    final UserModel? currentUser = await StorageService.getUserCredentials();
+    // Clear login status
+    await StorageService.updateLoginStatus(false);
+    // If remember me is disabled, clear all credentials and notifications
+    if (currentUser != null && !currentUser.rememberMe) {
+      await StorageService.clearUserCredentials();
+    }
+  }
 }

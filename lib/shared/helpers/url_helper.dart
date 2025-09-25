@@ -8,7 +8,7 @@ class UrlHelper {
   /// Returns null if the URL is invalid
   static Uri? parseUrl(String url) {
     try {
-      String formattedUrl = _formatUrl(url);
+      String formattedUrl = formatUrl(url);
       final Uri uri = Uri.parse(formattedUrl);
 
       // Validate the parsed URI
@@ -56,7 +56,7 @@ class UrlHelper {
   }
 
   /// Formats URL to ensure it has proper protocol and format
-  static String _formatUrl(String url) {
+  static String formatUrl(String url) {
     String formattedUrl = url.trim();
 
     // Add protocol if missing
@@ -180,7 +180,7 @@ class UrlHelper {
   static bool isSameRootDomain(String url1, String url2) {
     String getRootDomain(String url) {
       final uri = Uri.parse(url);
-      final parts = uri.host.split('.');
+      final parts = uri.path.split('.');
       if (parts.length >= 2) {
         return "${parts[parts.length - 2]}.${parts.last}";
       }

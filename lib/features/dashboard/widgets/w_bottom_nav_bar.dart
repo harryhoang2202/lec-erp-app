@@ -2,6 +2,7 @@ import 'dart:io';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:hybrid_erp_app/di/di.dart';
 import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
 import 'package:hybrid_erp_app/features/notifications/notification_list_screen.dart';
@@ -42,17 +43,21 @@ class _WBottomNavBarState extends State<WBottomNavBar> {
   /// Handle back button press
   Future<void> _onBackPressed() async {
     final canGoBack = await _viewModel.webViewController?.canGoBack() ?? false;
-
+    final currentUrl = await _viewModel.webViewController?.getUrl();
     if (canGoBack) {
-      final currentUrl = await _viewModel.webViewController?.getUrl();
       if (currentUrl?.toString() == _viewModel.homeUrl) {
         _showExitDialog();
       } else {
         await _viewModel.webViewController?.goBack();
       }
     } else if (mounted) {
-      // If can't go back, show confirmation dialog
-      _showExitDialog();
+      if (currentUrl?.toString() != _viewModel.homeUrl) {
+        _viewModel.webViewController?.loadUrl(
+          urlRequest: URLRequest(url: WebUri(_viewModel.homeUrl)),
+        );
+      } else {
+        _showExitDialog();
+      }
     }
   }
 

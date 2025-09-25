@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/auth_service.dart';
 import '../../../data/services/storage_service.dart';
-import '../../../data/services/network_service.dart';
+import '../../../shared/helpers/network_helper.dart';
 
 /// View model for handling sign-in logic and state management
 class SignInViewModel extends ChangeNotifier {
@@ -138,7 +138,7 @@ class SignInViewModel extends ChangeNotifier {
     }
 
     // Kiểm tra kết nối mạng trước khi đăng nhập
-    final hasConnection = await NetworkService().hasConnection();
+    final hasConnection = await NetworkHelper.instance.hasConnection();
     if (!hasConnection) {
       _setError(
         'Không có kết nối internet. Vui lòng kiểm tra lại kết nối mạng.',

@@ -7,6 +7,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:hybrid_erp_app/data/services/storage_service.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
+import 'package:hybrid_erp_app/resources/objectbox/objectbox.g.dart';
 
 class NotificationHelper {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -91,8 +92,9 @@ class NotificationHelper {
     await _showLocalNotification(message);
   }
 
-  static void _handleBackgroundMessage(RemoteMessage message) {
+  static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('App opened from background message: ${message.messageId}');
+    await _saveNotificationToDatabase(message);
     // Handle navigation or other actions when app is opened from notification
   }
 
@@ -207,10 +209,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Lưu notification vào database khi app ở background
   try {
+    // Mở ObjectBox Store trong background isolate và khởi tạo NotificationService
+    final Store store = await openStore();
+    NotificationService.initialize(store);
+
     // Lấy username hiện tại đang login
     final currentUsername = await _getCurrentUsernameForBackground();
     if (currentUsername == null) {
       debugPrint('No user logged in, skipping background notification save');
+      store.close();
       return;
     }
 
@@ -222,6 +229,9 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     debugPrint(
       'Background notification saved to database: ${notification.messageId} for user: $currentUsername',
     );
+
+    // Đóng store sau khi sử dụng trong background isolate
+    store.close();
   } catch (e) {
     debugPrint('Error saving background notification to database: $e');
   }

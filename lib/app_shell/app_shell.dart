@@ -36,7 +36,7 @@ class _AppShellState extends State<AppShell> {
     return MultiProvider(
       providers: [ChangeNotifierProvider(create: (_) => SignInViewModel())],
       child: MaterialApp(
-        key: navigatorKey,
+        navigatorKey: navigatorKey,
         theme: ThemeData(
           primarySwatch: Colors.indigo,
           primaryColor: const Color(0xFF1D24AB),

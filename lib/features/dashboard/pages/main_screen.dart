@@ -1,17 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:hybrid_erp_app/data/services/file_download_service.dart';
-import 'package:hybrid_erp_app/data/services/network_service.dart';
 import 'package:hybrid_erp_app/di/di.dart';
 
-import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.dart';
 import 'package:hybrid_erp_app/features/dashboard/view_models/main_view_model.dart';
-import 'package:hybrid_erp_app/features/dashboard/constants/main_screen_constants.dart';
-
+import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.dart';
+import 'package:hybrid_erp_app/shared/helpers/network_helper.dart';
 import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/webview_config.dart';
+import '../constants/main_screen_constants.dart';
 import '../widgets/w_bottom_nav_bar.dart';
 
 /// Main screen that displays the ERP web application in a WebView
@@ -28,94 +27,22 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   // State variables
   late final MainViewModel _viewModel = getIt<MainViewModel>();
 
-  int _retryCount = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   DateTime? timeLastPaused;
-  bool _isLoading = false;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    _initializeViewModelAndLoadUrl();
-  }
-
-  /// Initialize view model and load URL (shared logic)
-  Future<void> _initializeViewModelAndLoadUrl() async {
-    try {
-      setState(() {
-        _isLoading = true;
-      });
+    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
       await _viewModel.initialize();
-      _retryCount = 0; // Reset retry counter on successful initialization
-      _viewModel.homeUrl = 'https://${_viewModel.erpUrl}/Home';
-
-      // Use initial URL if provided, otherwise use current URL or home URL
-      final initialUrl =
-          widget.initialUrl ?? _viewModel.currentUrl ?? _viewModel.homeUrl;
-      await _viewModel.loadUrlWithNetworkCheck(initialUrl);
-    } catch (error) {
-      debugPrint('Initialization error: $error');
-    }
-  }
-
-  /// Load URL với kiểm tra network trước
-
-  /// Check if the URL contains authentication redirect paths
-  bool _isAuthRedirect(String url) {
-    final uri = Uri.parse(url);
-    if (uri.host == _viewModel.erpUrl) {
-      return MainScreenConstants.authRedirectPaths.any(
-        (path) => url.contains(path),
-      );
-    }
-    return false;
-  }
-
-  /// Handle authentication redirect with retry logic
-  Future<void> _handleAuthRedirect(String url) async {
-    if (_retryCount < MainScreenConstants.maxRetries) {
-      _retryCount++;
-
-      try {
-        await _retryInitialization();
-      } catch (e) {
-        if (_retryCount >= MainScreenConstants.maxRetries) {
-          _viewModel.redirectToSignIn();
-        }
+      if (widget.initialUrl != null) {
+        await _viewModel.webViewController?.loadUrl(
+          urlRequest: URLRequest(url: WebUri(widget.initialUrl!)),
+        );
       }
-    } else {
-      _viewModel.redirectToSignIn();
-    }
-  }
-
-  /// Retry initialization logic (shared between initial load and auth redirect)
-  Future<void> _retryInitialization() async {
-    await _viewModel.initialize();
-    _retryCount = 0; // Reset retry counter on successful retry
-    await _viewModel.loadUrlWithNetworkCheck(_viewModel.homeUrl);
-  }
-
-  /// Navigate to document preview screen
-  void _navigateToDocumentPreview(String url) {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (context) => DocumentPreviewScreen(url: url)),
-    );
-  }
-
-  /// Handle file download
-  Future<void> _handleFileDownload(String url) async {
-    final fileName = FileDownloadService.extractFileName(url);
-    await FileDownloadService.downloadFile(
-      url: url,
-      fileName: fileName,
-      context: context,
-    );
-  }
-
-  /// Open external URL
-  Future<void> _openExternalUrl(String url) async {
-    await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+    });
   }
 
   @override
@@ -124,11 +51,53 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
     super.dispose();
   }
 
+  Future<bool> handleUrl(String url) async {
+    final hasConnection = await NetworkHelper.instance.canReachUrl(url);
+    if (!hasConnection) {
+      if (mounted) {
+        NetworkHelper.showNoConnectionSnackBar(context);
+      }
+      return true;
+    }
+
+    if (!MainScreenConstants.authRedirectPaths.any(
+      (path) => Uri.parse(url).path == path,
+    )) {
+      _viewModel.lastNonAuthNavigatingUrl = url;
+    }
+
+    if (UrlHelper.isPreviewFile(url)) {
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => DocumentPreviewScreen(url: url),
+          ),
+        );
+      }
+      return true;
+    } else if (UrlHelper.isDownloadFile(url)) {
+      if (mounted) {
+        await FileDownloadService.downloadFile(
+          url: url,
+          fileName: FileDownloadService.extractFileName(url),
+          context: context,
+        );
+      }
+      return true;
+    } else if (UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
+      await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      return true;
+    } else if (MainScreenConstants.authRedirectPaths.any(
+      (path) => Uri.parse(url).path == path,
+    )) {
+      await _viewModel.handleAuthRedirect(url);
+      return true;
+    }
+    return false;
+  }
+
   @override
   Future<void> didChangeAppLifecycleState(AppLifecycleState state) async {
-    // Don't reload WebView on resume to prevent file upload interruption
-    // The WebView will maintain its state automatically
-
     switch (state) {
       case AppLifecycleState.resumed:
         if (timeLastPaused != null) {
@@ -153,7 +122,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   Widget build(BuildContext context) {
     return Scaffold(
       key: _scaffoldKey,
-
       backgroundColor: Colors.white,
       bottomNavigationBar: WBottomNavBar(),
       body: SafeArea(
@@ -197,73 +165,37 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       },
 
       onCreateWindow: (controller, createWindowAction) async {
-        // Handle file preview/download
         final url = createWindowAction.request.url;
 
         if (url != null) {
-          final urlString = url.toString();
-          if (UrlHelper.isPreviewFile(urlString)) {
-            _navigateToDocumentPreview(urlString);
-            return false;
-          } else if (UrlHelper.isDownloadFile(urlString)) {
-            _handleFileDownload(urlString);
-            return false;
-          } else if (UrlHelper.isExternalUrl(
-            url.toString(),
-            _viewModel.erpUrl ?? '',
-          )) {
-            _openExternalUrl(url.toString());
-            return false;
-          } else if (_isAuthRedirect(urlString)) {
-            _handleAuthRedirect(urlString);
+          if (await handleUrl(url.toString())) {
             return false;
           }
+          _viewModel.webViewController?.loadUrl(
+            urlRequest: URLRequest(url: url),
+          );
+          return true;
         }
-        return true;
+        return false;
+      },
+
+      onLoadStop: (controller, url) {
+        setState(() {
+          _isLoading = false;
+        });
       },
       onLoadStart: (controller, url) {
-        if (mounted) {
-          setState(() {
-            _isLoading = true;
-          });
-        }
+        setState(() {
+          _isLoading = true;
+        });
       },
-      onLoadStop: (controller, url) {
-        if (mounted) {
-          setState(() {
-            if (url != null) {
-              _viewModel.currentUrl = url.toString();
-            }
-            _isLoading = false;
-          });
-        }
-      },
-
       shouldOverrideUrlLoading: (controller, navigationAction) async {
-        final hasConnection = await NetworkService().hasConnection();
-        if (!hasConnection) {
-          NetworkService.showNoConnectionSnackBar(context);
+        setState(() {
+          _isLoading = true;
+        });
+        if (await handleUrl(navigationAction.request.url?.toString() ?? '')) {
           return NavigationActionPolicy.CANCEL;
         }
-        final url = navigationAction.request.url?.toString() ?? '';
-
-        if (UrlHelper.isPreviewFile(url)) {
-          _navigateToDocumentPreview(url);
-          return NavigationActionPolicy.CANCEL;
-        }
-        if (UrlHelper.isDownloadFile(url)) {
-          _handleFileDownload(url);
-          return NavigationActionPolicy.CANCEL;
-        }
-        if (UrlHelper.isExternalUrl(url, _viewModel.erpUrl ?? '')) {
-          _openExternalUrl(url);
-          return NavigationActionPolicy.CANCEL;
-        }
-        if (_isAuthRedirect(url)) {
-          _handleAuthRedirect(url);
-          return NavigationActionPolicy.CANCEL;
-        }
-
         return NavigationActionPolicy.ALLOW;
       },
     );

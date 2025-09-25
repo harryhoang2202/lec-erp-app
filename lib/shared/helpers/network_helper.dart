@@ -3,10 +3,10 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
 
 /// Service để kiểm tra kết nối mạng và trạng thái internet
-class NetworkService {
-  static final NetworkService _instance = NetworkService._internal();
-  factory NetworkService() => _instance;
-  NetworkService._internal();
+class NetworkHelper {
+  static final NetworkHelper instance = NetworkHelper._internal();
+  factory NetworkHelper() => instance;
+  NetworkHelper._internal();
 
   final Connectivity _connectivity = Connectivity();
 
@@ -42,9 +42,13 @@ class NetworkService {
   /// Kiểm tra kết nối với một URL cụ thể
   Future<bool> canReachUrl(String url) async {
     try {
-      final uri = Uri.parse(url);
-      final result = await InternetAddress.lookup(uri.host);
-      return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      if (await hasConnection()) {
+        final uri = Uri.parse(url);
+        final result = await InternetAddress.lookup(uri.host);
+        return result.isNotEmpty && result[0].rawAddress.isNotEmpty;
+      } else {
+        return false;
+      }
     } catch (e) {
       debugPrint('NetworkService: Cannot reach URL $url: $e');
       return false;

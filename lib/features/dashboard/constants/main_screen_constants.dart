@@ -5,7 +5,7 @@ class MainScreenConstants {
 
   // Authentication redirect paths
   static const List<String> authRedirectPaths = [
-    'Account/LogOff',
-    'Account/LogOn',
+    '/Account/LogOff',
+    '/Account/LogOn',
   ];
 }
