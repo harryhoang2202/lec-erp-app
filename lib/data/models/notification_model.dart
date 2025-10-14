@@ -22,7 +22,7 @@ class NotificationModel {
   String? topic;
   String? category;
   String? url;
-
+  bool? openUrl;
   // Username của user nhận notification
   String username;
 
@@ -39,6 +39,7 @@ class NotificationModel {
     this.category,
     required this.username,
     this.url,
+    this.openUrl,
   });
 
   // Getter for data
@@ -66,6 +67,7 @@ class NotificationModel {
       createdAt: DateTime.now(),
       username: username,
       url: dataMap['url'],
+      openUrl: dataMap['open_url'] == "true" ? true : false,
     );
   }
 
@@ -83,6 +85,7 @@ class NotificationModel {
       'category': category,
       'username': username,
       'url': url,
+      'open_url': openUrl == true ? "true" : "false",
     };
   }
 
@@ -100,6 +103,7 @@ class NotificationModel {
       category: json['category'],
       username: json['username'] ?? '',
       url: json['url'],
+      openUrl: json['open_url'] == "true" ? true : false,
     );
   }
 }

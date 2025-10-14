@@ -1,10 +1,11 @@
 import 'dart:convert';
-import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:hybrid_erp_app/app_shell/app_shell.dart';
 import 'package:hybrid_erp_app/data/services/storage_service.dart';
+import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
 import 'package:hybrid_erp_app/resources/objectbox/objectbox.g.dart';
@@ -20,14 +21,11 @@ class NotificationHelper {
       // Initialize Firebase
       await Firebase.initializeApp();
 
-      // Request permission for iOS
-      if (Platform.isIOS) {
-        await _firebaseMessaging.requestPermission(
-          alert: true,
-          badge: true,
-          sound: true,
-        );
-      }
+      await _firebaseMessaging.requestPermission(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
 
       // Initialize local notifications
       const AndroidInitializationSettings androidSettings =
@@ -95,6 +93,13 @@ class NotificationHelper {
   static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('App opened from background message: ${message.messageId}');
     await _saveNotificationToDatabase(message);
+    _onNotificationTapped(
+      NotificationResponse(
+        id: message.hashCode,
+        payload: json.encode(message.data),
+        notificationResponseType: NotificationResponseType.selectedNotification,
+      ),
+    );
     // Handle navigation or other actions when app is opened from notification
   }
 
@@ -153,19 +158,20 @@ class NotificationHelper {
   static void _onNotificationTapped(NotificationResponse response) {
     if (response.payload != null) {
       final data = json.decode(response.payload!);
-      debugPrint('Notification tapped with data: $data');
-      // Handle notification tap - navigate to specific screen, etc.
+      if (data['open_url'] == "true") {
+        final url = data['url']?.toString();
+        if (url != null && url.isNotEmpty) {
+          if (navigatorKey.currentContext != null) {
+            Navigator.push(
+              navigatorKey.currentContext!,
+              MaterialPageRoute(
+                builder: (context) => MainScreen(initialUrl: data['url']),
+              ),
+            );
+          }
+        }
+      }
     }
-  }
-
-  static Future<void> subscribeToTopic(String topic) async {
-    await _firebaseMessaging.subscribeToTopic(topic);
-    debugPrint('Subscribed to topic: $topic');
-  }
-
-  static Future<void> unsubscribeFromTopic(String topic) async {
-    await _firebaseMessaging.unsubscribeFromTopic(topic);
-    debugPrint('Unsubscribed from topic: $topic');
   }
 
   static Future<String?> getToken() async {

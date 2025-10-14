@@ -1,3 +1,4 @@
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:hybrid_erp_app/data/services/file_download_service.dart';
@@ -30,17 +31,27 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   DateTime? timeLastPaused;
   bool _isLoading = true;
-
+  String? initialUrl;
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    WidgetsBinding.instance.addPostFrameCallback((timeStamp) async {
-      await _viewModel.initialize();
-      if (widget.initialUrl != null) {
-        await _viewModel.webViewController?.loadUrl(
-          urlRequest: URLRequest(url: WebUri(widget.initialUrl!)),
-        );
+
+    FirebaseMessaging.instance.getInitialMessage().then((message) async {
+      if (message != null) {
+        if (message.data['open_url'] == "true") {
+          if (message.data['url'] != null && message.data['url']!.isNotEmpty) {
+            setState(() {
+              initialUrl = message.data['url']!;
+            });
+            await _viewModel.initialize(message.data['url']);
+          }
+        }
+      } else {
+        setState(() {
+          initialUrl = widget.initialUrl;
+        });
+        await _viewModel.initialize(initialUrl);
       }
     });
   }
@@ -145,7 +156,6 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
   /// Build the InAppWebView
   Widget _buildWebView() {
     return InAppWebView(
-      initialUrlRequest: URLRequest(url: WebUri(_viewModel.homeUrl)),
       initialSettings: WebViewConfig.defaultSettings,
       onWebViewCreated: (controller) {
         _viewModel.webViewController = controller;

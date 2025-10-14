@@ -8,7 +8,6 @@ import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
 
 /// Service class for handling authentication API calls
 class AuthService {
-  static const String _authEndpoint = '/Account/LogInMobile';
   static const String _registerEndpoint = '/Account/RegisterMobileLogIn';
 
   /// Signs in user with ERP URL, username, and password
@@ -21,7 +20,6 @@ class AuthService {
     try {
       // Ensure ERP URL is properly formatted
       final String baseUrl = _formatUrl(erpUrl);
-      final String fullUrl = '$baseUrl$_authEndpoint';
       final String registerUrl = '$baseUrl$_registerEndpoint';
 
       final params = {
@@ -34,25 +32,20 @@ class AuthService {
       // Create dio
       final dio = Dio();
       Response response;
-      final UserModel? user = await StorageService.getUserCredentials();
-      if (user == null) {
-        response = await dio.get(registerUrl, queryParameters: params);
-      } else {
-        response = await dio.get(fullUrl, queryParameters: params);
-      }
+
+      response = await dio.get(registerUrl, queryParameters: params);
+
       // Make POST request to sign-in endpoint
       // check if user is already registered
 
       // Check if request was successful
       if (response.statusCode == 200) {
-        // check if redirect contains Home/AccessDenied
-        if (response.redirects.isNotEmpty) {
-          final String redirectUrl = response.redirects.first.location.path;
-          if (redirectUrl.contains('Home/AccessDenied')) {
-            return false;
-          }
+        if (response.data["data"] == "success" ||
+            response.data["data"] == "success2") {
+          return true;
+        } else {
+          return false;
         }
-        return true;
       } else {
         debugPrint(
           'Authentication failed with status code: ${response.statusCode}',

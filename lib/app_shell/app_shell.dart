@@ -23,6 +23,7 @@ class _AppShellState extends State<AppShell> {
 
   // Request permissions
   Future<void> _requestPermissions() async {
+    await Permission.notification.request();
     await Permission.camera.request();
     await Permission.photos.request();
     await Permission.storage.request();

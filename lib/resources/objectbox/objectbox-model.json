@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:6890465762639014486",
-      "lastPropertyId": "12:9157792853802654629",
+      "lastPropertyId": "13:4068791755281939590",
       "name": "NotificationModel",
       "properties": [
         {
@@ -70,6 +70,11 @@
           "id": "12:9157792853802654629",
           "name": "url",
           "type": 9
+        },
+        {
+          "id": "13:4068791755281939590",
+          "name": "openUrl",
+          "type": 1
         }
       ],
       "relations": []

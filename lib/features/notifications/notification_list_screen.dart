@@ -319,13 +319,15 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
   }
 
   void _handleNotificationTap(NotificationModel notification) {
-    if (notification.url != null) {
-      Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (context) => MainScreen(initialUrl: notification.url),
-        ),
-      );
+    if (notification.openUrl == true) {
+      if (notification.url != null && notification.url!.isNotEmpty) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => MainScreen(initialUrl: notification.url),
+          ),
+        );
+      }
     }
   }
 }
