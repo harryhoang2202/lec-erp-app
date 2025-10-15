@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/dimens/responsive_helper.dart';
-import 'package:hybrid_erp_app/shared/extentions/context_extention.dart';
+import 'package:lec_erp_app/shared/dimens/responsive_helper.dart';
+import 'package:lec_erp_app/shared/extentions/context_extention.dart';
 import '../view_models/sign_in_view_model.dart';
 
 class ErpUrlEditor extends StatelessWidget {

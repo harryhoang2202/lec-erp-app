@@ -1,13 +1,14 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:hybrid_erp_app/data/services/file_download_service.dart';
-import 'package:hybrid_erp_app/di/di.dart';
+import 'package:lec_erp_app/data/services/file_download_service.dart';
+import 'package:lec_erp_app/di/di.dart';
 
-import 'package:hybrid_erp_app/features/dashboard/view_models/main_view_model.dart';
-import 'package:hybrid_erp_app/features/document/pages/document_preview_screen.dart';
-import 'package:hybrid_erp_app/shared/helpers/network_helper.dart';
-import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
+import 'package:lec_erp_app/features/dashboard/view_models/main_view_model.dart';
+import 'package:lec_erp_app/features/document/pages/document_preview_screen.dart';
+import 'package:lec_erp_app/shared/helpers/network_helper.dart';
+import 'package:lec_erp_app/shared/helpers/notification_helper.dart';
+import 'package:lec_erp_app/shared/helpers/url_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../config/webview_config.dart';
@@ -41,18 +42,14 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       if (message != null) {
         if (message.data['open_url'] == "true") {
           if (message.data['url'] != null && message.data['url']!.isNotEmpty) {
-            setState(() {
-              initialUrl = message.data['url']!;
-            });
-            await _viewModel.initialize(message.data['url']);
+            initialUrl = message.data['url']!;
           }
         }
+        await NotificationHelper.saveNotificationToDatabase(message);
       } else {
-        setState(() {
-          initialUrl = widget.initialUrl;
-        });
-        await _viewModel.initialize(initialUrl);
+        initialUrl = widget.initialUrl;
       }
+      await _viewModel.initialize(initialUrl);
     });
   }
 
@@ -104,6 +101,8 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
       await _viewModel.handleAuthRedirect(url);
       return true;
     }
+    // Update home url
+    _viewModel.homeUrl = "https://${Uri.parse(url).host}/Home";
     return false;
   }
 

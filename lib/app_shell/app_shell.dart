@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/dimens/app_dimen.dart';
+import 'package:lec_erp_app/shared/dimens/app_dimen.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 import '../features/authentication/view_models/sign_in_view_model.dart';

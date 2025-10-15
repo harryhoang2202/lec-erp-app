@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/dimens/dimens.dart';
+import 'package:lec_erp_app/shared/dimens/dimens.dart';
 
 import '../constants/device_constants.dart';
 

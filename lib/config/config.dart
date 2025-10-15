@@ -1,8 +1,8 @@
 import 'dart:io';
 
-import 'package:hybrid_erp_app/data/services/notification_service.dart';
-import 'package:hybrid_erp_app/resources/objectbox/objectbox.g.dart';
-import 'package:hybrid_erp_app/shared/helpers/notification_helper.dart';
+import 'package:lec_erp_app/data/services/notification_service.dart';
+import 'package:lec_erp_app/resources/objectbox/objectbox.g.dart';
+import 'package:lec_erp_app/shared/helpers/notification_helper.dart';
 
 import '../di/di.dart' as di;
 

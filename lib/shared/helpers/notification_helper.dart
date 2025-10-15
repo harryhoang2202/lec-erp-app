@@ -3,12 +3,12 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:hybrid_erp_app/app_shell/app_shell.dart';
-import 'package:hybrid_erp_app/data/services/storage_service.dart';
-import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/app_shell/app_shell.dart';
+import 'package:lec_erp_app/data/services/storage_service.dart';
+import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
-import 'package:hybrid_erp_app/resources/objectbox/objectbox.g.dart';
+import 'package:lec_erp_app/resources/objectbox/objectbox.g.dart';
 
 class NotificationHelper {
   static final FlutterLocalNotificationsPlugin _localNotifications =
@@ -84,7 +84,7 @@ class NotificationHelper {
     debugPrint('Received foreground message: ${message.messageId}');
 
     // Lưu notification vào local database
-    await _saveNotificationToDatabase(message);
+    await saveNotificationToDatabase(message);
 
     // Show local notification
     await _showLocalNotification(message);
@@ -92,7 +92,7 @@ class NotificationHelper {
 
   static Future<void> _handleBackgroundMessage(RemoteMessage message) async {
     debugPrint('App opened from background message: ${message.messageId}');
-    await _saveNotificationToDatabase(message);
+    await saveNotificationToDatabase(message);
     _onNotificationTapped(
       NotificationResponse(
         id: message.hashCode,
@@ -103,7 +103,7 @@ class NotificationHelper {
     // Handle navigation or other actions when app is opened from notification
   }
 
-  static Future<void> _saveNotificationToDatabase(RemoteMessage message) async {
+  static Future<void> saveNotificationToDatabase(RemoteMessage message) async {
     try {
       // Lấy username hiện tại đang login
       final currentUsername = await _getCurrentUsername();

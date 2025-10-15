@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/dimens/responsive_helper.dart';
+import 'package:lec_erp_app/shared/dimens/responsive_helper.dart';
 import '../view_models/sign_in_view_model.dart';
 
 class ErpUrlField extends StatelessWidget {

@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/data/models/user_model.dart';
-import 'package:hybrid_erp_app/data/services/storage_service.dart';
-import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
+import 'package:lec_erp_app/data/models/user_model.dart';
+import 'package:lec_erp_app/data/services/storage_service.dart';
+import 'package:lec_erp_app/shared/helpers/url_helper.dart';
 
 /// Service class for handling authentication API calls
 class AuthService {

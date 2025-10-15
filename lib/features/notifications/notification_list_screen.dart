@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
 import '../../data/services/storage_service.dart';

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/data/services/file_download_service.dart';
-import 'package:hybrid_erp_app/features/document/widgets/image_viewer.dart';
-import 'package:hybrid_erp_app/features/document/widgets/pdf_viewer.dart';
-import 'package:hybrid_erp_app/shared/constants/url_constants.dart';
+import 'package:lec_erp_app/data/services/file_download_service.dart';
+import 'package:lec_erp_app/features/document/widgets/image_viewer.dart';
+import 'package:lec_erp_app/features/document/widgets/pdf_viewer.dart';
+import 'package:lec_erp_app/shared/constants/url_constants.dart';
 
 class DocumentPreviewScreen extends StatefulWidget {
   final String url;

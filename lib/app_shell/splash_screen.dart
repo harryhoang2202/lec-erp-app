@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/data/models/user_model.dart';
-import 'package:hybrid_erp_app/data/services/storage_service.dart';
-import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
-import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
-import 'package:hybrid_erp_app/resources/generated/assets.gen.dart';
-import 'package:hybrid_erp_app/shared/constants/app_constants.dart';
-import 'package:hybrid_erp_app/shared/dimens/app_dimen.dart';
+import 'package:lec_erp_app/data/models/user_model.dart';
+import 'package:lec_erp_app/data/services/storage_service.dart';
+import 'package:lec_erp_app/features/authentication/pages/sign_in_page.dart';
+import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/resources/generated/assets.gen.dart';
+import 'package:lec_erp_app/shared/constants/app_constants.dart';
+import 'package:lec_erp_app/shared/dimens/app_dimen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});

@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/resources/generated/assets.gen.dart';
+import 'package:lec_erp_app/resources/generated/assets.gen.dart';
 
-import 'package:hybrid_erp_app/shared/dimens/app_dimen.dart';
-import 'package:hybrid_erp_app/shared/dimens/responsive_helper.dart';
+import 'package:lec_erp_app/shared/dimens/app_dimen.dart';
+import 'package:lec_erp_app/shared/dimens/responsive_helper.dart';
 import '../../../shared/extentions/context_extention.dart';
 
 class AppHeader extends StatelessWidget {

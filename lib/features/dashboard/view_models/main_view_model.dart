@@ -2,12 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:hybrid_erp_app/app_shell/app_shell.dart';
-import 'package:hybrid_erp_app/data/models/user_model.dart';
-import 'package:hybrid_erp_app/data/services/auth_service.dart';
-import 'package:hybrid_erp_app/shared/helpers/network_helper.dart';
-import 'package:hybrid_erp_app/shared/helpers/url_helper.dart';
-import 'package:hybrid_erp_app/data/services/storage_service.dart';
+import 'package:lec_erp_app/app_shell/app_shell.dart';
+import 'package:lec_erp_app/data/models/user_model.dart';
+import 'package:lec_erp_app/data/services/auth_service.dart';
+import 'package:lec_erp_app/shared/helpers/network_helper.dart';
+import 'package:lec_erp_app/shared/helpers/url_helper.dart';
+import 'package:lec_erp_app/data/services/storage_service.dart';
 import 'package:injectable/injectable.dart';
 
 import '../constants/main_screen_constants.dart';
@@ -37,7 +37,7 @@ class MainViewModel with ChangeNotifier {
     if (currentUser == null) {
       isLoading = false;
       notifyListeners();
-      return;
+      await signOut();
     } else {
       erpUrl = currentUser!.erpUrl;
       homeUrl = 'https://$erpUrl/Home';

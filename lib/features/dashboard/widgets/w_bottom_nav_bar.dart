@@ -3,9 +3,9 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'package:hybrid_erp_app/di/di.dart';
-import 'package:hybrid_erp_app/features/authentication/pages/sign_in_page.dart';
-import 'package:hybrid_erp_app/features/notifications/notification_list_screen.dart';
+import 'package:lec_erp_app/di/di.dart';
+import 'package:lec_erp_app/features/authentication/pages/sign_in_page.dart';
+import 'package:lec_erp_app/features/notifications/notification_list_screen.dart';
 
 import '../view_models/main_view_model.dart';
 import 'exit_confirmation_dialog.dart';

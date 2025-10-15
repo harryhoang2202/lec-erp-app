@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/features/dashboard/pages/main_screen.dart';
-import 'package:hybrid_erp_app/resources/generated/assets.gen.dart';
-import 'package:hybrid_erp_app/shared/dimens/responsive_helper.dart';
+import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/resources/generated/assets.gen.dart';
+import 'package:lec_erp_app/shared/dimens/responsive_helper.dart';
 import 'package:provider/provider.dart';
 import '../view_models/sign_in_view_model.dart';
 import '../widgets/index.dart';

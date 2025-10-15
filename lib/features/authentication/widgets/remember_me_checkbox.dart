@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/extentions/context_extention.dart';
+import 'package:lec_erp_app/shared/extentions/context_extention.dart';
 
 /// Widget for the "Remember Me" checkbox in the sign-in form
 class RememberMeCheckbox extends StatelessWidget {

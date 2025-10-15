@@ -92,7 +92,7 @@ lib/
 1. **Clone the repository**
    ```bash
    git clone <repository-url>
-   cd hybrid_erp_app
+   cd lec_erp_app
    ```
 
 2. **Install dependencies**

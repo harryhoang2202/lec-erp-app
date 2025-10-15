@@ -1,4 +1,4 @@
-name: hybrid_erp_app
+name: lec_erp_app
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 version: 1.0.0+1

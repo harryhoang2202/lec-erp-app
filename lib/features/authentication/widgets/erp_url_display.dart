@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:hybrid_erp_app/shared/dimens/responsive_helper.dart';
+import 'package:lec_erp_app/shared/dimens/responsive_helper.dart';
 import '../../../data/models/user_model.dart';
 import '../../../shared/extentions/context_extention.dart';
 
