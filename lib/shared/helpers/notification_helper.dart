@@ -6,6 +6,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:lec_erp_app/app_shell/app_shell.dart';
 import 'package:lec_erp_app/data/services/storage_service.dart';
 import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/shared/extentions/collection_extention.dart';
 import '../../data/models/notification_model.dart';
 import '../../data/services/notification_service.dart';
 import 'package:lec_erp_app/resources/objectbox/objectbox.g.dart';
@@ -111,6 +112,16 @@ class NotificationHelper {
         debugPrint('No user logged in, skipping notification save');
         return;
       }
+      if (message.notification == null) {
+        debugPrint('Notification is null, skipping notification save');
+        return;
+      } else if (message.notification!.title.isNullOrEmpty ||
+          message.notification!.body.isNullOrEmpty) {
+        debugPrint(
+          'Notification has no title or body, skipping notification save',
+        );
+        return;
+      }
 
       final notification = NotificationModel.fromRemoteMessage(
         message,
@@ -145,14 +156,17 @@ class NotificationHelper {
       android: androidDetails,
       iOS: iosDetails,
     );
-
-    await _localNotifications.show(
-      message.hashCode,
-      message.notification?.title ?? 'New Notification',
-      message.notification?.body ?? '',
-      details,
-      payload: json.encode(message.data),
-    );
+    if (message.notification != null &&
+        message.notification!.title.isNotNullOrEmpty &&
+        message.notification!.body.isNotNullOrEmpty) {
+      await _localNotifications.show(
+        message.hashCode,
+        message.notification!.title!,
+        message.notification!.body!,
+        details,
+        payload: json.encode(message.data),
+      );
+    }
   }
 
   static void _onNotificationTapped(NotificationResponse response) {
