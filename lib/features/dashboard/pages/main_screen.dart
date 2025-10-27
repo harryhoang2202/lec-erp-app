@@ -6,6 +6,7 @@ import 'package:lec_erp_app/di/di.dart';
 
 import 'package:lec_erp_app/features/dashboard/view_models/main_view_model.dart';
 import 'package:lec_erp_app/features/document/pages/document_preview_screen.dart';
+import 'package:lec_erp_app/shared/constants/app_constants.dart';
 import 'package:lec_erp_app/shared/helpers/network_helper.dart';
 import 'package:lec_erp_app/shared/helpers/notification_helper.dart';
 import 'package:lec_erp_app/shared/helpers/url_helper.dart';
@@ -146,6 +147,19 @@ class _MainScreenState extends State<MainScreen> with WidgetsBindingObserver {
                 alignment: Alignment.center,
                 child: CircularProgressIndicator(),
               ),
+            Positioned(
+              bottom: 2,
+              left: 2,
+              right: 0,
+              child: Text(
+                AppConstants.APP_VERSION_TEST,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 6,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
           ],
         ),
       ),

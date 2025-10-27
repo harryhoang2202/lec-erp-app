@@ -42,10 +42,8 @@ class MainViewModel with ChangeNotifier {
       erpUrl = currentUser!.erpUrl;
       homeUrl = 'https://$erpUrl/Home';
       notifyListeners();
-      if (currentUser != null && !currentUser!.isLoggedIn) {
-        await signIn();
-      }
-      await Future.delayed(Duration(milliseconds: 200), () async {
+      await signIn();
+      await Future.delayed(Duration(milliseconds: 800), () async {
         await _webViewController?.loadUrl(
           urlRequest: URLRequest(url: WebUri(initialUrl ?? homeUrl)),
         );
@@ -81,11 +79,9 @@ class MainViewModel with ChangeNotifier {
         'nameToke': Platform.isIOS ? 'IOS' : 'ANDROID',
       },
     );
-    await Future.delayed(Duration(milliseconds: 500), () async {
-      await _webViewController?.loadUrl(
-        urlRequest: URLRequest(url: WebUri(uri.toString())),
-      );
-    });
+    await _webViewController?.loadUrl(
+      urlRequest: URLRequest(url: WebUri(uri.toString())),
+    );
 
     _retryCount = 0;
     notifyListeners();
