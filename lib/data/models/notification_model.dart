@@ -58,7 +58,7 @@ class NotificationModel {
     return NotificationModel(
       messageId:
           message.messageId ?? DateTime.now().millisecondsSinceEpoch.toString(),
-      title: message.notification?.title ?? 'Notification',
+      title: message.notification?.title ?? '',
       body: message.notification?.body ?? '',
       imageUrl:
           message.notification?.android?.imageUrl ??

@@ -1,3 +1,4 @@
+import 'package:lec_erp_app/shared/extentions/collection_extention.dart';
 import 'package:objectbox/objectbox.dart';
 import '../models/notification_model.dart';
 
@@ -20,6 +21,9 @@ class NotificationService {
   Future<void> saveNotification(NotificationModel notification) async {
     if (_notificationBox == null) {
       throw Exception('NotificationService chưa được khởi tạo');
+    }
+    if (notification.title.isNullOrEmpty || notification.body.isNullOrEmpty) {
+      return;
     }
 
     try {

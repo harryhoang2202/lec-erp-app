@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lec_erp_app/features/dashboard/pages/main_screen.dart';
+import 'package:lec_erp_app/features/notifications/view_models/notification_view_model.dart';
+import 'package:provider/provider.dart';
 import '../../data/models/notification_model.dart';
-import '../../data/services/notification_service.dart';
 import '../../data/services/storage_service.dart';
 
 class NotificationListScreen extends StatefulWidget {
@@ -13,203 +14,145 @@ class NotificationListScreen extends StatefulWidget {
 
 class _NotificationListScreenState extends State<NotificationListScreen> {
   final ScrollController _scrollController = ScrollController();
-  final List<NotificationModel> _notifications = [];
-  bool _isLoading = false;
-  bool _hasMoreData = true;
-  int _currentPage = 1;
-  final int _pageSize = 20;
-  String? _selectedCategory;
-  bool? _selectedReadStatus;
-  String? _currentUsername;
+  late NotificationViewModel _viewModel;
+  bool _isLoggedIn = false;
 
   @override
   void initState() {
     super.initState();
-    _getCurrentUser();
+    _viewModel = NotificationViewModel();
+    _viewModel.getNotifications();
     _scrollController.addListener(_onScroll);
+    _checkLoginStatus();
   }
 
-  Future<void> _getCurrentUser() async {
-    try {
-      final user = await StorageService.getUserCredentials();
-      if (user != null && user.isLoggedIn) {
-        setState(() {
-          _currentUsername = user.username;
-        });
-        _loadNotifications();
-      } else {
-        _showErrorSnackBar('Vui lòng đăng nhập để xem thông báo');
-      }
-    } catch (e) {
-      _showErrorSnackBar('Lỗi khi lấy thông tin user: $e');
-    }
+  _checkLoginStatus() {
+    StorageService.isUserLoggedIn().then((value) {
+      setState(() {
+        _isLoggedIn = value;
+      });
+    });
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _viewModel.dispose();
     super.dispose();
   }
 
   void _onScroll() {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
-      if (!_isLoading && _hasMoreData) {
-        _loadMoreNotifications();
+      if (!_viewModel.isLoading && _viewModel.hasMoreData) {
+        _viewModel.loadMoreNotifications();
       }
     }
-  }
-
-  Future<void> _loadNotifications({bool refresh = false}) async {
-    if (_isLoading || _currentUsername == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      if (refresh) {
-        _currentPage = 1;
-        _notifications.clear();
-        _hasMoreData = true;
-      }
-
-      final newNotifications = await NotificationService.instance
-          .getNotifications(
-            username: _currentUsername!,
-            page: _currentPage,
-            pageSize: _pageSize,
-            isRead: _selectedReadStatus,
-            category: _selectedCategory,
-          );
-
-      setState(() {
-        if (refresh) {
-          _notifications.clear();
-        }
-        _notifications.addAll(newNotifications);
-        _hasMoreData = newNotifications.length == _pageSize;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-      });
-      _showErrorSnackBar('Lỗi khi tải danh sách thông báo: $e');
-    }
-  }
-
-  Future<void> _loadMoreNotifications() async {
-    if (_isLoading || !_hasMoreData || _currentUsername == null) return;
-
-    setState(() {
-      _isLoading = true;
-    });
-
-    try {
-      _currentPage++;
-      final newNotifications = await NotificationService.instance
-          .getNotifications(
-            username: _currentUsername!,
-            page: _currentPage,
-            pageSize: _pageSize,
-            isRead: _selectedReadStatus,
-            category: _selectedCategory,
-          );
-
-      setState(() {
-        _notifications.addAll(newNotifications);
-        _hasMoreData = newNotifications.length == _pageSize;
-        _isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        _isLoading = false;
-        _currentPage--; // Revert page number on error
-      });
-      _showErrorSnackBar('Đã có lỗi xảy ra: $e');
-    }
-  }
-
-  Future<void> _markAsRead(NotificationModel notification) async {
-    try {
-      await NotificationService.instance.markAsRead(notification.id);
-      setState(() {
-        notification.isRead = true;
-      });
-    } catch (e) {
-      _showErrorSnackBar('Đã có lỗi xảy ra: $e');
-    }
-  }
-
-  Future<void> _markAllAsRead() async {
-    if (_currentUsername == null) return;
-
-    try {
-      await NotificationService.instance.markAllAsRead(
-        username: _currentUsername!,
-      );
-      setState(() {
-        for (final notification in _notifications) {
-          notification.isRead = true;
-        }
-      });
-    } catch (e) {
-      _showErrorSnackBar('Đã có lỗi xảy ra: $e');
-    }
-  }
-
-  Future<void> _deleteNotification(NotificationModel notification) async {
-    try {
-      await NotificationService.instance.deleteNotification(notification.id);
-      setState(() {
-        _notifications.remove(notification);
-      });
-    } catch (e) {
-      _showErrorSnackBar('Đã có lỗi xảy ra: $e');
-    }
-  }
-
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.red),
-    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
+    return ChangeNotifierProvider<NotificationViewModel>.value(
+      value: _viewModel,
+      child: Scaffold(
         backgroundColor: Colors.white,
-        shape: const Border(bottom: BorderSide(color: Colors.grey, width: 0.5)),
-        title: const Text('Thông báo'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.done_all),
-            onPressed: _markAllAsRead,
+        appBar: AppBar(
+          backgroundColor: Colors.white,
+          shape: const Border(
+            bottom: BorderSide(color: Colors.grey, width: 0.5),
           ),
-        ],
-      ),
-      body: RefreshIndicator(
-        onRefresh: () => _loadNotifications(refresh: true),
-        child: _currentUsername == null
-            ? const Center(child: Text('Vui lòng đăng nhập để xem thông báo'))
-            : _notifications.isEmpty && !_isLoading
-            ? const Center(child: Text('Không có thông báo nào'))
-            : ListView.separated(
+          title: const Text('Thông báo'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.done_all),
+              onPressed: _viewModel.notifications.isNotEmpty
+                  ? _viewModel.markAllAsRead
+                  : null,
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete),
+              onPressed: _viewModel.notifications.isNotEmpty
+                  ? () {
+                      showDialog(
+                        context: context,
+                        builder: (context) => AlertDialog(
+                          backgroundColor: Colors.white,
+                          insetPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                          ),
+
+                          title: const Text('Xóa tất cả thông báo'),
+                          content: const Text(
+                            'Bạn có chắc chắn muốn xóa tất cả thông báo?',
+                            textAlign: TextAlign.center,
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                _viewModel.deleteAllNotificationsForUser();
+                                Navigator.pop(context);
+                              },
+                              child: const Text(
+                                'Xóa',
+                                style: TextStyle(color: Colors.red),
+                              ),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(context),
+                              child: const Text(
+                                'Hủy',
+                                style: TextStyle(color: Colors.black),
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }
+                  : null,
+            ),
+          ],
+        ),
+        body: Consumer<NotificationViewModel>(
+          builder: (context, viewModel, child) {
+            if (!_isLoggedIn) {
+              return const Center(
+                child: Text('Vui lòng đăng nhập để xem thông báo'),
+              );
+            }
+            if (viewModel.notifications.isEmpty) {
+              return Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Center(child: Text('Không có thông báo nào')),
+                  SizedBox(height: 16),
+                  TextButton(
+                    onPressed: () => viewModel.getNotifications(),
+                    child: const Text('Tải lại'),
+                  ),
+                ],
+              );
+            }
+            return RefreshIndicator(
+              onRefresh: () => viewModel.getNotifications(),
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
                 controller: _scrollController,
-                itemCount: _notifications.length + (_hasMoreData ? 1 : 0),
+                itemCount:
+                    viewModel.notifications.length +
+                    (viewModel.hasMoreData ? 1 : 0),
                 separatorBuilder: (context, index) => const Divider(height: 1),
                 itemBuilder: (context, index) {
-                  if (index == _notifications.length) {
+                  if (index == viewModel.notifications.length) {
                     return _buildLoadingIndicator();
                   }
 
-                  final notification = _notifications[index];
+                  final notification = viewModel.notifications[index];
                   return _buildNotificationTile(notification);
                 },
               ),
+            );
+          },
+        ),
       ),
     );
   }
@@ -225,7 +168,7 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
         child: const Icon(Icons.delete, color: Colors.white),
       ),
       onDismissed: (direction) {
-        _deleteNotification(notification);
+        _viewModel.deleteNotification(notification);
       },
       child: ListTile(
         leading: CircleAvatar(
@@ -279,15 +222,20 @@ class _NotificationListScreenState extends State<NotificationListScreen> {
             ),
           ],
         ),
-        trailing: notification.isRead
-            ? null
-            : IconButton(
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (!notification.isRead) ...[
+              IconButton(
                 icon: const Icon(Icons.check_circle_outline),
-                onPressed: () => _markAsRead(notification),
+                onPressed: () => _viewModel.markAsRead(notification),
               ),
+            ],
+          ],
+        ),
         onTap: () {
           if (!notification.isRead) {
-            _markAsRead(notification);
+            _viewModel.markAsRead(notification);
           }
           // Handle navigation based on notification data
           _handleNotificationTap(notification);
